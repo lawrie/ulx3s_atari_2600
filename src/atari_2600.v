@@ -100,9 +100,9 @@ module atari_2600
   // ===============================================================
   // Chip selects
   // ===============================================================
-  wire ram_cs = cpu_address >= 16'h0080 && cpu_address <= 16'h00ff;
+  wire ram_cs = cpu_address >= 16'h0080 && cpu_address < 16'h0100;
   wire tia_cs = cpu_address < 16'h0080;
-  wire pia_cs = cpu_address >= 16'h0280 && cpu_address <= 16'h0300;
+  wire pia_cs = cpu_address >= 16'h0280 && cpu_address < 16'h0300;
   wire rom_cs = cpu_address[15:12] == 4'hf;
 
   // ===============================================================
@@ -162,7 +162,7 @@ module atari_2600
     .adr_i(cpu_address[6:0]),
     .dat_i(cpu_dout),
     .dat_o(tia_dat_o),
-    .buttons(r_btn),
+    .buttons({~r_btn[6:1], r_btn[0], 1'b1}),
     .audio_left(audio_l),
     .audio_right(audio_r),
     .stall_cpu(stall_cpu),
@@ -185,7 +185,7 @@ module atari_2600
     .adr_i(cpu_address[6:0]),
     .dat_i(cpu_din),
     .dat_o(pia_dat_o),
-    .buttons(r_btn)
+    .buttons({~r_btn[6:1], r_btn[0], 1'b1})
   );
 
   // ===============================================================
@@ -306,7 +306,7 @@ module atari_2600
     .o_hsync(osd_vga_hsync), .o_vsync(osd_vga_vsync), .o_blank(osd_vga_blank)
   );
 
-  wire [15:0] border_color = 0;
+  wire [15:0] border_color = 16'h001F;
 
   video vga (
     .clk(clk_vga),
@@ -418,14 +418,14 @@ module atari_2600
     led2 <= cpu_enable; // yellow
     led3 <= stall_cpu;  // green
     led4 <= rnw;        // blue
-    led5 <= 0;  // red
-    led6 <= 0;  // yellow
-    led7 <= 0;  // green
+    led5 <= tia_cs;     // red
+    led6 <= pia_cs;     // yellow
+    led7 <= tia_enable; // green
     led8 <= 0;  // blue
   end
 
   // Diagnostics
-  //assign led = {led8, led7, led6, led5, led4, led3, led2, led1};
+  assign led = {led8, led7, led6, led5, led4, led3, led2, led1};
 
   // ===============================================================
   // Led diagnostics
@@ -445,8 +445,7 @@ module atari_2600
   endgenerate
 
   always @(posedge clk_cpu) begin
-    diag16 <= vid_dout;
-    if (tia_cs && !rnw) led <= led + 1;
+    if (tia_cs && !rnw) diag16 <= {cpu_dout, 1'b0, cpu_address[6:0]};
   end
 
 endmodule

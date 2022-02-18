@@ -9,7 +9,7 @@ module video (
   output        vga_vs,
   output        vga_de,
   input  [7:0]  vga_data,
-  output [13:0] vga_addr,
+  output [16:0] vga_addr,
   input [4:0]   border_color
 );
 
@@ -24,7 +24,12 @@ module video (
   parameter VFP = 11;
   parameter VBP = 31;
   parameter VT  = VA + VS + VFP + VBP;
-
+  parameter VB  = 0;
+  parameter VB2 = VB/2;
+  parameter HB = 0;
+  parameter HB2 = HB/2;
+  parameter HA2 = HA/2;
+  
   reg [9:0] hc = 0;
   reg [9:0] vc = 0;
 
@@ -41,27 +46,19 @@ module video (
   assign vga_vs = !(vc >= VA + VFP && vc < VA + VFP + VS);
   assign vga_de = !(hc >= HA || vc >= VA);
 
-  wire [7:0] vb = 0;
-  wire [6:0] vb2 = 0;
+  wire [8:0] x = hc[9:1] - HB2;
+  wire [7:0] y = vc[9:1] - VB2;
 
-  wire [7:0] hb = 0;
-
-  wire [9:0] x = hc - hb;
-  wire [7:0] y = vc[9:1] - vb2;
-
-  wire [9:0] x8 = x + 8;
-  wire [7:0] y1 = y + 1;
-
-  wire h_border = (hc < hb || hc >= (HA - hb));
-  wire v_border = (vc < vb || vc >= VA - vb);
+  wire h_border = (hc < HB || hc >= (HA - HB));
+  wire v_border = (vc < VB || vc >= VA - VB);
   wire border = h_border || v_border;
 
   reg [15:0] pixels;
 
   // Read video memory
   always @(posedge clk) begin
-    if (x < HA - 8) vga_addr <= y * 320 + x;
-    if (x[2:0] == 7) pixels <= vga_data;
+    if (x < HA2) vga_addr <= y * 320 + x;
+    pixels <= vga_data;
   end
 
   wire [15:0] col = border ? border_color : pixels;

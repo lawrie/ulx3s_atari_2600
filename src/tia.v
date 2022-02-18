@@ -29,7 +29,7 @@ module tia #(
   output                          stall_cpu,
     
   // video
-  output                          vid_out,
+  output [15:0]                   vid_out,
   output [16:0]                   vid_addr,
   output                          vid_wr
 );
@@ -66,17 +66,14 @@ module tia #(
 
   reg        pix_clk = 0;
   reg        reset_cursor = 0;
-  wire       busy = 0;
   reg [15:0] pix_data;
-  wire       blank_busy = !(&busy_counter);
-  reg [1:0]  busy_counter = 0;
   
   // CPU control
   assign stall_cpu = wsync;
 
   // Video
   assign vid_out = pix_data;
-  assign vid_addr = ypos * 320 + xpos;
+  assign vid_addr = (ypos - 16) * 320 + xpos;
   assign vid_wr = pix_clk;
 
   // Read the color numbers
@@ -223,7 +220,6 @@ module tia #(
       end
   end
 
-
   // Drive the video like a CRT, racing the beam
   wire pf_bit = pf[xpos < 160 ? (xpos >> 3) : ((!refpf ? xpos - 160 : 319 - xpos) >> 3)];
   wire [7:0] xp = (xpos >> 1);
@@ -258,7 +254,7 @@ module tia #(
       ypos <= 0;
       done_sync <= 1;
       free_cpu <= 1;
-    end else if (!rst_i && !busy && !blank_busy && pix_clk == 0) begin
+    end else if (!rst_i && enable_i) begin
        if (ypos < 261) begin // 262 clock counts depth
           if (xpos < 455)  begin // 228 x 2 = 456 clock counts width
              xpos <= xpos + 1;
@@ -289,7 +285,7 @@ module tia #(
             if (bl_bit) cx[7] <= 1;
           end
 
-         if (m0_bit) begin
+          if (m0_bit) begin
             if (pf_bit) cx[6] <= 1;
             if (bl_bit) cx[5] <= 1;
           end
@@ -316,17 +312,14 @@ module tia #(
                 p0_bit ? colup0 :
                 p1_bit ? colup1 :
                 pf_bit ? pf_color : colubk];
-            else pix_data <= 0;
+            else pix_data <= 16'hf800;
            
             pix_clk <= 1;
-         end else busy_counter <= 0; // Wait 8 clock cycles as if pixel were being written
-              
+          end            
        end else begin
           ypos <= 0;
        end
     end
-
-    if (blank_busy) busy_counter <= busy_counter + 1;
  end
 
  // Audio
