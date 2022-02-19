@@ -38,7 +38,7 @@ module atari_2600
   output reg [7:0]  led
 );
 
-  // passthru to ESP32 micropython serial console
+  // Passthru to ESP32 micropython serial console
   assign wifi_rxd = ftdi_txd;
   assign ftdi_rxd = wifi_txd;
 
@@ -69,7 +69,6 @@ module atari_2600
   // ===============================================================
   // Joystick for OSD control and games
   // ===============================================================
-
   reg [6:0] r_btn;
   always @(posedge clk_cpu)
     r_btn <= btn;
@@ -88,7 +87,6 @@ module atari_2600
   // ===============================================================
   // Reset generation
   // ===============================================================
-
   reg [15:0] pwr_up_reset_counter = 0; // hold reset low for ~1ms
   wire       pwr_up_reset_n = &pwr_up_reset_counter;
   wire       reset = pwr_up_reset_n;;
@@ -108,7 +106,6 @@ module atari_2600
   // ===============================================================
   // 6502 CPU
   // ===============================================================
-
   wire [7:0]  rom_out;
   wire [7:0]  ram_out;
   wire [7:0]  pia_dat_o;
@@ -117,19 +114,18 @@ module atari_2600
   wire [7:0]  cpu_dout;
   wire [15:0] cpu_address;
   wire        rnw;
-  wire        ready = 1;
   wire        stall_cpu;
-  wire        nmi_n = 1;
-  wire        irq_n = 1;
+  reg [7:0]   r_cpu_control;
+  wire        spi_load = r_cpu_control[1];
 
   chip_6502 aholme_cpu (
     .clk(clk_cpu),
     .phi(clk_counter[3]),
     .res(~reset),
     .so(1'b0),
-    .rdy(ready && !stall_cpu),
-    .nmi(nmi_n),
-    .irq(irq_n),
+    .rdy(!stall_cpu && !spi_load),
+    .nmi(1'b1),
+    .irq(1'b1),
     .rw(rnw),
     .dbi(cpu_din),
     .dbo(cpu_dout),
@@ -139,17 +135,14 @@ module atari_2600
   // ===============================================================
   // Address multiplexer
   // ===============================================================
-
   assign cpu_din = tia_cs ? tia_dat_o :
                    pia_cs ? pia_dat_o :
                    ram_cs ? ram_out :
                    rom_cs ? rom_out : 8'h0;
 
-  ///////////////////////////////////////////////////////////////////////////
-  ///
-  /// TIA
-  ///
-  ///////////////////////////////////////////////////////////////////////////
+  // ===============================================================
+  // TIA
+  // ===============================================================
   wire [15:0] vid_dout;
   wire [16:0] vid_out_addr;
   wire        vid_wr;
@@ -169,28 +162,36 @@ module atari_2600
     .enable_i(tia_enable),
     .vid_out(vid_dout),
     .vid_addr(vid_out_addr),
-    .vid_wr(vid_wr)
+    .vid_wr(vid_wr),
+    .diag(led)
   );
 
-  ///////////////////////////////////////////////////////////////////////////
-  ///
-  /// PIA
-  ///
-  ///////////////////////////////////////////////////////////////////////////
+  // ===============================================================
+  // PIA
+  // ===============================================================
   pia pia (
     .clk_i(clk_cpu),
     .rst_i(reset),
     .stb_i(pia_cs),
     .we_i(!rnw),
     .adr_i(cpu_address[6:0]),
-    .dat_i(cpu_din),
+    .dat_i(cpu_dout),
     .dat_o(pia_dat_o),
+    .enable_i(tia_enable),
     .buttons({~r_btn[6:1], r_btn[0], 1'b1})
   );
 
   // ===============================================================
   // ROM
   // ===============================================================
+  wire        spi_ram_wr, spi_ram_rd;
+  wire [31:0] spi_ram_addr;
+  wire  [7:0] spi_ram_di;
+  wire  [7:0] spi_ram_do = rom_out;
+  wire irq;
+
+  assign sd_d[3] = 1'bz; // FPGA pin pullup sets SD card inactive at SPI bus
+
   dprom #(
     .DATA_WIDTH(8),
     .DEPTH(4 * 1024),
@@ -198,7 +199,10 @@ module atari_2600
   ) rom (
     .clk(clk_cpu),
     .addr(cpu_address[11:0]),
-    .dout(rom_out)
+    .dout(rom_out),
+    .addr_b(spi_ram_addr[11:0]),
+    .we_b(spi_ram_wr && spi_ram_addr[31:24] == 0),
+    .din_b(spi_ram_do)
   );
 
   // ===============================================================
@@ -212,19 +216,19 @@ module atari_2600
     .addr(cpu_address[6:0]),
     .dout(ram_out),
     .din(cpu_dout),
-    .we(!rnw && cpu_address >= 16'h0080 && cpu_address <= 16'h00ff)
+    .we(!rnw && ram_cs)
   );
 
   // ===============================================================
   // Screen memory
   // ===============================================================
-  wire [15:0] vram_out;
+  wire [6:0]  vram_out;
   wire [15:0] vram_in;
-  wire [16:0] vram_addr;
+  wire [15:0] vram_addr;
   
   dpram #(
-    .DATA_WIDTH(16),
-    .DEPTH(320 * 240)
+    .DATA_WIDTH(7),
+    .DEPTH(160 * 240)
   ) vram (
     .clk_a(clk_cpu),
     .addr_a(vid_out_addr),
@@ -238,15 +242,6 @@ module atari_2600
   // ===============================================================
   // SPI Slave for RAM and CPU control
   // ===============================================================
-  
-  wire        spi_ram_wr, spi_ram_rd;
-  wire [31:0] spi_ram_addr;
-  wire  [7:0] spi_ram_di = ram_out;
-  wire  [7:0] spi_ram_do;
-
-  assign sd_d[3] = 1'bz; // FPGA pin pullup sets SD card inactive at SPI bus
-
-  wire irq;
   spi_ram_btn
   #(
     .c_sclk_capable_pin(1'b0),
@@ -254,7 +249,7 @@ module atari_2600
   )
   spi_ram_btn_inst
   (
-    .clk(clk_vga),
+    .clk(clk_cpu),
     .csn(~wifi_gpio5),
     .sclk(wifi_gpio16),
     .mosi(sd_d[1]), // wifi_gpio4
@@ -270,16 +265,15 @@ module atari_2600
 
   assign wifi_gpio0 = ~irq;
 
-  reg [7:0] R_cpu_control;
   always @(posedge clk_cpu) begin
     if (spi_ram_wr && spi_ram_addr[31:24] == 8'hFF) begin
-      R_cpu_control <= spi_ram_di;
+      r_cpu_control <= spi_ram_di;
     end
   end
 
+  // ===============================================================
   // SPI Slave for OSD display
   // ===============================================================
-
   wire [7:0] osd_vga_r, osd_vga_g, osd_vga_b;  
   wire osd_vga_hsync, osd_vga_vsync, osd_vga_blank;
   wire vga_de;
@@ -297,16 +291,14 @@ module atari_2600
   spi_osd_inst
   (
     .clk_pixel(clk_vga), .clk_pixel_ena(1),
-    .i_r({red,   {4{red[0]}}   }),
-    .i_g({green, {4{green[0]}} }),
-    .i_b({blue,  {4{blue[0]}}  }),
+    .i_r(red),
+    .i_g(green),
+    .i_b(blue),
     .i_hsync(~hsync), .i_vsync(~vsync), .i_blank(~vga_de),
     .i_csn(~wifi_gpio5), .i_sclk(wifi_gpio16), .i_mosi(sd_d[1]), // .o_miso(),
     .o_r(osd_vga_r), .o_g(osd_vga_g), .o_b(osd_vga_b),
     .o_hsync(osd_vga_hsync), .o_vsync(osd_vga_vsync), .o_blank(osd_vga_blank)
   );
-
-  wire [15:0] border_color = 16'h001F;
 
   video vga (
     .clk(clk_vga),
@@ -317,8 +309,7 @@ module atari_2600
     .vga_hs(hsync),
     .vga_vs(vsync),
     .vga_addr(vram_addr),
-    .vga_data(vram_out),
-    .border_color(border_color)
+    .vga_data(vram_out)
   );
 
   // Convert VGA to HDMI
@@ -424,8 +415,7 @@ module atari_2600
     led8 <= 0;  // blue
   end
 
-  // Diagnostics
-  assign led = {led8, led7, led6, led5, led4, led3, led2, led1};
+  //assign led = {led8, led7, led6, led5, led4, led3, led2, led1};
 
   // ===============================================================
   // Led diagnostics

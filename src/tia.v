@@ -4,8 +4,7 @@
 `default_nettype none
 module tia #(
   parameter DATA_WIDTH = 8,
-  parameter ADDR_WIDTH = 7,
-  parameter RAM_DEPTH = 128
+  parameter ADDR_WIDTH = 7
 ) (
   input                           clk_i,
   input                           rst_i,
@@ -29,16 +28,16 @@ module tia #(
   output                          stall_cpu,
     
   // video
-  output [15:0]                   vid_out,
-  output [16:0]                   vid_addr,
-  output                          vid_wr
+  output [6:0]                    vid_out,
+  output [15:0]                   vid_addr,
+  output                          vid_wr,
+  output [7:0]                    diag
 );
   // Button numbers
   localparam UP = 4, RIGHT = 7, LEFT = 6, DOWN = 5,
              A = 3, B = 1, X = 0, Y = 2;
 
   // TIA registers
-  reg [15:0]       colors [0:128];
   reg [6:0]        colubk, colup0, colup1, colupf;
   reg              vsync, vblank, wsync, enam0, enam1, enabl, vdelbl, vdelp0, vdelp1;
   reg              refp0, refp1, refpf, scorepf, pf_priority;
@@ -61,23 +60,19 @@ module tia #(
   reg              free_cpu, do_sync, done_sync;
     
   // Video data
-  reg[8:0] xpos;
+  reg[7:0] xpos;
   reg[8:0] ypos;
 
   reg        pix_clk = 0;
-  reg        reset_cursor = 0;
-  reg [15:0] pix_data;
+  reg [6:0]  pix_data;
   
   // CPU control
   assign stall_cpu = wsync;
 
   // Video
   assign vid_out = pix_data;
-  assign vid_addr = (ypos - 16) * 320 + xpos;
+  assign vid_addr = (ypos - 16) * 160 + xpos;
   assign vid_wr = pix_clk;
-
-  // Read the color numbers
-  initial $readmemh("../roms/colors.mem", colors);
 
   // Wishbone-like interface
   wire valid_cmd = !rst_i && stb_i;
@@ -213,16 +208,17 @@ module tia #(
         'h2c: cx_clr <= 1;                  // CXCLR
       endcase
     end
-      if (ypos < 40 || ypos >= 232) begin
-        enabl <= 0;
-        enam0 <= 0;
-        enam1 <= 0;
-      end
+    
+    if (ypos < 40 || ypos >= 232) begin
+      enabl <= 0;
+      enam0 <= 0;
+      enam1 <= 0;
+    end
   end
 
   // Drive the video like a CRT, racing the beam
-  wire pf_bit = pf[xpos < 160 ? (xpos >> 3) : ((!refpf ? xpos - 160 : 319 - xpos) >> 3)];
-  wire [7:0] xp = (xpos >> 1);
+  wire pf_bit = pf[xpos < 80 ? (xpos >> 2) : ((!refpf ? xpos - 80 : 159 - xpos) >> 2)];
+  wire xp = xpos;
   wire p0_bit = (xp >= x_p0 && xp < x_p0 + p0_w ||
                  (p0_copies > 0 && ((xp - p0_spacing) >= x_p0 &&
                  (xp - p0_spacing) < x_p0 + p0_w)) ||
@@ -240,25 +236,25 @@ module tia #(
   wire m1_bit = enam1 && xp >= x_m1 && xp < x_m1 + m1_w;
   wire [6:0] pf_color = (scorepf ? (xp < 160 ? colup0 : colup1) :  colupf);
 
+  assign diag = {vblank, do_sync, wsync, vsync};
+
   always @(posedge clk_i) begin
     free_cpu <= 0;
     done_sync = 0;
     pix_clk <= 0;
-    reset_cursor <= 0;
 
     if (cx_clr) cx <= 0;
 
     if (do_sync) begin
-      reset_cursor <= 1;
       xpos <= 0;
       ypos <= 0;
       done_sync <= 1;
       free_cpu <= 1;
     end else if (!rst_i && enable_i) begin
        if (ypos < 261) begin // 262 clock counts depth
-          if (xpos < 455)  begin // 228 x 2 = 456 clock counts width
+          if (xpos < 227)  begin // 228 x 2 = 456 clock counts width
              xpos <= xpos + 1;
-             if (xpos == 319) free_cpu <= 1; // Restart cpu in horizontal blank
+             if (xpos == 159) free_cpu <= 1; // Restart cpu in horizontal blank
           end else begin
              xpos <= 0;
              ypos <= ypos + 1;
@@ -302,17 +298,17 @@ module tia #(
           if (m0_bit && m1_bit) cx[0] <= 1;
 
           // Draw pixel     
-          if ( ypos >= 16 && ypos < 256 && xpos < 320) begin // Don't draw in blank or overscan areas
+          if ( ypos >= 16 && ypos < 256 && xpos < 160) begin // Don't draw in blank or overscan areas
             if (ypos >= 40 && ypos < 232) // Leave gap of 24 pixels at top and bottom
-              pix_data <= colors[
+              pix_data <= 
                 bl_bit ? colupf :
                 m0_bit ? colup0 :
                 m1_bit ? colup1 :
                 pf_priority && pf_bit ? pf_color :
                 p0_bit ? colup0 :
                 p1_bit ? colup1 :
-                pf_bit ? pf_color : colubk];
-            else pix_data <= 16'hf800;
+                pf_bit ? pf_color : colubk;
+            else pix_data <= 7'h00;
            
             pix_clk <= 1;
           end            

@@ -5,6 +5,7 @@
 module pia (
   input                           clk_i,
   input                           rst_i,
+  input                           enable_i,
 
   input                           stb_i,
   input                           we_i,
@@ -58,7 +59,7 @@ module pia (
 
   reg [4:0] pixel_counter;
 
-  always @(posedge clk_i) begin
+  always @(posedge clk_i) if(enable_i) begin
     pixel_counter <= pixel_counter + 1;
     reset_interval <= 0;
 
