@@ -79,11 +79,11 @@ Loop1
         INX
         STX COLUBK 
         
-        REPEAT 22
+        REPEAT 12
         NOP
         REPEND
         STY COLUBK
-        REPEAT 15
+        REPEAT 10
         NOP
         REPEND
         STX COLUBK 

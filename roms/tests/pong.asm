@@ -39,7 +39,7 @@ Clear:
     STA COLUP0
     STA COLUP1
     
-    LDA #$00
+    LDA #$10
     STA CTRLPF
     
     LDA #$E0          ; Move Ball 2 right, gets done 37 times
@@ -73,25 +73,23 @@ Clear:
     STA AUDF1
     LDA #4
     STA AUDC1
-	  
+	
+    LDA #2            ; Start VBLANK
+    STA VBLANK
+    
 Frame:
     LDA #0
     STA AUDV1
+    LDA #2
     
-    LDA #2            ; Start VBLANK
-    STA VBLANK
-        
+Vsync0:
     STA VSYNC         ; 3 VSYNC lines
     STA WSYNC
     STA WSYNC
     STA WSYNC
     LDA #0
     STA VSYNC
-    
-    LDY #37          ; 37 VBLANK lines
-    
-    LDA #42
-	STA TIM64T
+    LDY #37           ; 37 VBLANK lines
     
 Vblank0:
     STA WSYNC
@@ -103,17 +101,14 @@ Vblank0:
 Cont_M0:
     STA HMOVE         ; Move ball and missiles
     DEY
-    LDA INTIM
-    BPL Vblank0
+    BNE Vblank0
     
+    LDA #0            ; Clear VBLANK
+    STA VBLANK
     STA HMCLR         ; Clear Ball and missile movement
     LDY #0            ; Count picture lines
-   
-    LDA #0            ; Clear VBLANK
-    STA VBLANK   
     
 Picture:
-    
     LDA #0
     CPY Ball_Y
     BNE NoBall
@@ -155,10 +150,10 @@ NoBat1:
     STA WSYNC
     CPY #192
     BCC Picture       ; Unsigned comparison
-  
-    LDA #2            ; Start VBlank for overscan
+    
+    LDA #2            ; Set VBLANK
     STA VBLANK
-	  
+    
     BIT INPT4
 	BMI Button_Not_Pushed
 	LDA #1
@@ -266,10 +261,6 @@ Horiz:
     STA AUDC0
     LDA #15
     STA AUDV0
-    STA WSYNC
-    STA RESBL
-    STA RESM0
-    STA RESM1
     BRK
 Store_R:
     LDA #$F0
@@ -287,10 +278,6 @@ Ball_Left:
     STA AUDC0
     LDA #15
     STA AUDV0
-    STA WSYNC
-    STA RESBL
-    STA RESM0
-    STA RESM1
     BRK
 Store_L:    
     LDA #$10
@@ -322,8 +309,8 @@ No_Change:
     
 No_Change1:
 Skip_Logic:
-
-    LDY #30          ; 29 more overscan lines
+	
+    LDY #29           ; Another 29 Overscan lines
 Overscan:
     DEY
     STA WSYNC
