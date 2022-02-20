@@ -32,7 +32,7 @@ module video (
   reg [23:0] palette [0:127];
 
   initial begin
-    palette[0]   = 24'h000000; // Whites
+    palette[0]   = 24'h000000; // White
     palette[1]   = 24'h404040;
     palette[2]   = 24'h6c6c6c;
     palette[3]   = 24'h909090;
@@ -68,7 +68,7 @@ module video (
     palette[30]  = 24'heca880;
     palette[31]  = 24'hfcbc94;
 
-    palette[32]  = 24'h880000; // Red
+    palette[32]  = 24'h880000; // Pink
     palette[33]  = 24'h9c2020;
     palette[34]  = 24'hb03c3c;
     palette[35]  = 24'hc05858;
@@ -204,7 +204,7 @@ module video (
 
   // Read video memory
   always @(posedge clk) begin
-    if (x < HA2) vga_addr <= y * 160 + x;
+    vga_addr <= x < 160 ? y * 160 + x + 1 : (y + 1) * 160;
     pixels <= palette[vga_data];
   end
 

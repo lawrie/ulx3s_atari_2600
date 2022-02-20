@@ -32,7 +32,7 @@ module tia #(
   output [6:0]                    vid_out,
   output [15:0]                   vid_addr,
   output                          vid_wr,
-  output [7:0]                    diag
+  output [127:0]                  diag
 );
   // Button numbers
   localparam UP = 4, RIGHT = 7, LEFT = 6, DOWN = 5, A = 3, B = 1, X = 0, Y = 2;
@@ -57,7 +57,9 @@ module tia #(
   reg [6:0]        p0_spacing, p1_spacing;
   reg              inpt0 = 0, inpt1 = 0, inpt2 = 0, inpt3 = 0, inpt4 = 0, inpt5 = 0;
   reg              dump_ports, latch_ports;
-    
+
+  assign diag = {56'b0, x_p0, x_p1, x_m0, x_m1, x_bl, colubk, 1'b0, colup0, 1'b0, colup1, 1'b0, colupf, 1'b0};
+
   // Video data
   reg[7:0]         xpos;
   reg[8:0]         ypos;

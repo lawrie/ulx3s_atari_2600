@@ -90,8 +90,9 @@ module atari_2600
   // Reset generation
   // ===============================================================
   reg [15:0] pwr_up_reset_counter = 0; // hold reset low for ~1ms
+  reg [7:0]  r_cpu_control;
   wire       pwr_up_reset_n = &pwr_up_reset_counter;
-  wire       reset = pwr_up_reset_n;;
+  wire       reset = pwr_up_reset_n || r_cpu_control[0];
 
   always @(posedge clk_25mhz) begin
     if (pwr_up_reset_n) pwr_up_reset_counter <= pwr_up_reset_counter + 1;
@@ -117,7 +118,6 @@ module atari_2600
   wire [15:0] cpu_address;
   wire        rnw;
   wire        stall_cpu;
-  reg [7:0]   r_cpu_control;
   wire        spi_load = r_cpu_control[1];
 
   chip_6502 aholme_cpu (
@@ -148,7 +148,8 @@ module atari_2600
   wire [15:0] vid_dout;
   wire [16:0] vid_out_addr;
   wire        vid_wr;
-  
+  wire [127:0] tia_diag;
+
   tia tia_ram (
     .clk_i(clk_sys),
     .rst_i(reset),
@@ -166,7 +167,7 @@ module atari_2600
     .vid_out(vid_dout),
     .vid_addr(vid_out_addr),
     .vid_wr(vid_wr),
-    //.diag(led)
+    .diag(tia_diag)
   );
 
   // ===============================================================
@@ -180,7 +181,7 @@ module atari_2600
     .adr_i(cpu_address[6:0]),
     .dat_i(cpu_dout),
     .dat_o(pia_dat_o),
-    .enable_i(tia_enable),
+    .enable_i(cpu_enable),
     .buttons({~r_btn[6:1], r_btn[0], 1'b1})
   );
 
@@ -293,7 +294,7 @@ module atari_2600
   )
   spi_osd_inst
   (
-    .clk_pixel(clk_sys), .clk_pixel_ena(1),
+    .clk_pixel(clk_vga), .clk_pixel_ena(1),
     .i_r(red),
     .i_g(green),
     .i_b(blue),
@@ -338,7 +339,7 @@ module atari_2600
   reg [255:0] r_display;
   // HEX decoder does printf("%16X\n%16X\n", r_display[63:0], r_display[127:64]);
   always @(posedge clk_sys)
-    r_display <= {rom_out, cpu_din, cpu_dout, cpu_address};
+    r_display <= {16'b0, ram_out, rom_out, cpu_din, cpu_dout, cpu_address, tia_diag};
 
   parameter c_color_bits = 16;
   wire [7:0] x;
