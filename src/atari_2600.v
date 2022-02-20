@@ -2,6 +2,7 @@
 module atari_2600
 #(
   parameter c_diag         = 1,
+  parameter c_speed        = 3,
   parameter c_lcd_hex      = 1   // SPI LCD HEX decoder
 )
 (
@@ -64,23 +65,24 @@ module atari_2600
   );
   wire clk_hdmi  = clocks[0];
   wire clk_vga   = clocks[1];
-  wire clk_cpu  = clocks[2];
+  wire clk_sys  = clocks[2];
 
   // ===============================================================
   // Joystick for OSD control and games
   // ===============================================================
   reg [6:0] r_btn;
-  always @(posedge clk_cpu)
+  always @(posedge clk_sys)
     r_btn <= btn;
 
   // ===============================================================
   // Clock Enable Generation
   // ===============================================================
-  reg [3:0] clk_counter = 0;
+  reg [c_speed:0] clk_counter = 0;
   wire cpu_enable = clk_counter == 0;
   wire tia_enable = clk_counter < 3;
+  wire clk_cpu = clk_counter[c_speed];
 
-  always @(posedge clk_cpu) begin
+  always @(posedge clk_sys) begin
     clk_counter <= clk_counter + 1;
   end
 
@@ -119,8 +121,8 @@ module atari_2600
   wire        spi_load = r_cpu_control[1];
 
   chip_6502 aholme_cpu (
-    .clk(clk_cpu),
-    .phi(clk_counter[3]),
+    .clk(clk_sys),
+    .phi(clk_cpu),
     .res(~reset),
     .so(1'b0),
     .rdy(!stall_cpu && !spi_load),
@@ -148,7 +150,7 @@ module atari_2600
   wire        vid_wr;
   
   tia tia_ram (
-    .clk_i(clk_cpu),
+    .clk_i(clk_sys),
     .rst_i(reset),
     .stb_i(tia_cs),
     .we_i(!rnw),
@@ -160,17 +162,18 @@ module atari_2600
     .audio_right(audio_r),
     .stall_cpu(stall_cpu),
     .enable_i(tia_enable),
+    .cpu_enable_i(cpu_enable && !stall_cpu),
     .vid_out(vid_dout),
     .vid_addr(vid_out_addr),
     .vid_wr(vid_wr),
-    .diag(led)
+    //.diag(led)
   );
 
   // ===============================================================
   // PIA
   // ===============================================================
   pia pia (
-    .clk_i(clk_cpu),
+    .clk_i(clk_sys),
     .rst_i(reset),
     .stb_i(pia_cs),
     .we_i(!rnw),
@@ -187,7 +190,7 @@ module atari_2600
   wire        spi_ram_wr, spi_ram_rd;
   wire [31:0] spi_ram_addr;
   wire  [7:0] spi_ram_di;
-  wire  [7:0] spi_ram_do = rom_out;
+  wire  [7:0] spi_ram_do = ram_out;
   wire irq;
 
   assign sd_d[3] = 1'bz; // FPGA pin pullup sets SD card inactive at SPI bus
@@ -197,12 +200,12 @@ module atari_2600
     .DEPTH(4 * 1024),
     .MEM_INIT_FILE("../roms/rom.mem")
   ) rom (
-    .clk(clk_cpu),
+    .clk(clk_sys),
     .addr(cpu_address[11:0]),
     .dout(rom_out),
     .addr_b(spi_ram_addr[11:0]),
     .we_b(spi_ram_wr && spi_ram_addr[31:24] == 0),
-    .din_b(spi_ram_do)
+    .din_b(spi_ram_di)
   );
 
   // ===============================================================
@@ -212,8 +215,8 @@ module atari_2600
     .DATA_WIDTH(8),
     .DEPTH(128)
   ) ram (
-    .clk(clk_cpu),
-    .addr(cpu_address[6:0]),
+    .clk(clk_sys),
+    .addr(spi_ram_rd ? spi_ram_addr[6:0] : cpu_address[6:0]),
     .dout(ram_out),
     .din(cpu_dout),
     .we(!rnw && ram_cs)
@@ -223,14 +226,14 @@ module atari_2600
   // Screen memory
   // ===============================================================
   wire [6:0]  vram_out;
-  wire [15:0] vram_in;
+  wire [6:0]  vram_in;
   wire [15:0] vram_addr;
   
   dpram #(
     .DATA_WIDTH(7),
     .DEPTH(160 * 240)
   ) vram (
-    .clk_a(clk_cpu),
+    .clk_a(clk_sys),
     .addr_a(vid_out_addr),
     .din_a(vid_dout),
     .we_a(vid_wr),
@@ -249,7 +252,7 @@ module atari_2600
   )
   spi_ram_btn_inst
   (
-    .clk(clk_cpu),
+    .clk(clk_sys),
     .csn(~wifi_gpio5),
     .sclk(wifi_gpio16),
     .mosi(sd_d[1]), // wifi_gpio4
@@ -265,7 +268,7 @@ module atari_2600
 
   assign wifi_gpio0 = ~irq;
 
-  always @(posedge clk_cpu) begin
+  always @(posedge clk_sys) begin
     if (spi_ram_wr && spi_ram_addr[31:24] == 8'hFF) begin
       r_cpu_control <= spi_ram_di;
     end
@@ -290,7 +293,7 @@ module atari_2600
   )
   spi_osd_inst
   (
-    .clk_pixel(clk_vga), .clk_pixel_ena(1),
+    .clk_pixel(clk_sys), .clk_pixel_ena(1),
     .i_r(red),
     .i_g(green),
     .i_b(blue),
@@ -334,7 +337,7 @@ module atari_2600
   // SPI DISPLAY
   reg [255:0] r_display;
   // HEX decoder does printf("%16X\n%16X\n", r_display[63:0], r_display[127:64]);
-  always @(posedge clk_cpu)
+  always @(posedge clk_sys)
     r_display <= {rom_out, cpu_din, cpu_dout, cpu_address};
 
   parameter c_color_bits = 16;
@@ -404,7 +407,7 @@ module atari_2600
   reg        led7;
   reg        led8;
 
-  always @(posedge clk_cpu) begin
+  always @(posedge clk_sys) begin
     led1 <= reset;      // red
     led2 <= cpu_enable; // yellow
     led3 <= stall_cpu;  // green
@@ -415,7 +418,7 @@ module atari_2600
     led8 <= 0;  // blue
   end
 
-  //assign led = {led8, led7, led6, led5, led4, led3, led2, led1};
+  assign led = {led8, led7, led6, led5, led4, led3, led2, led1};
 
   // ===============================================================
   // Led diagnostics
@@ -434,8 +437,8 @@ module atari_2600
     end
   endgenerate
 
-  always @(posedge clk_cpu) begin
-    if (tia_cs && !rnw) diag16 <= {cpu_dout, 1'b0, cpu_address[6:0]};
+  always @(posedge clk_sys) begin
+    if (rom_cs) diag16 <= cpu_address;
   end
 
 endmodule
