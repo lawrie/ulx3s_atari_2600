@@ -163,7 +163,7 @@ module atari_2600
     .audio_right(audio_r),
     .stall_cpu(stall_cpu),
     .enable_i(tia_enable),
-    .cpu_enable_i(cpu_enable && !stall_cpu),
+    .cpu_enable_i(cpu_enable),
     .vid_out(vid_dout),
     .vid_addr(vid_out_addr),
     .vid_wr(vid_wr),
@@ -368,7 +368,6 @@ module atari_2600
 
   always @(posedge clk_vga)
     if(next_pixel) r_color <= color;
-
 
   lcd_video #(
     .c_clk_mhz(25),

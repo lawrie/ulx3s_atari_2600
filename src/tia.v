@@ -31,7 +31,7 @@ module tia #(
   // video
   output [6:0]                    vid_out,
   output [15:0]                   vid_addr,
-  output                          vid_wr,
+  output reg                      vid_wr,
   output [127:0]                  diag
 );
   // Button numbers
@@ -58,44 +58,42 @@ module tia #(
   reg              inpt0, inpt1, inpt2, inpt3, inpt4, inpt5;
   reg              dump_ports, latch_ports;
 
+  // Diagnostics
   assign diag = {16'b0, grp0, grp1, pf, 4'b0, x_p0, x_p1, x_m0, x_m1, x_bl, colubk, 1'b0, colup0, 1'b0, colup1, 1'b0, colupf, 1'b0};
 
   // Video data
   reg[7:0]         xpos;
   reg[8:0]         ypos;
   reg [6:0]        color;
-  reg              pix_clk = 0;
   
+  assign vid_out = color;
+  assign vid_addr = (ypos - 16) * 160 + xpos;
+
   // CPU control
   assign stall_cpu = wsync;
 
-  // Video
-  assign vid_out = color;
-  assign vid_addr = (ypos - 16) * 160 + xpos;
-  assign vid_wr = pix_clk;
-
   // Wishbone-like interface
-  wire valid_cmd = !rst_i && stb_i;
-  wire valid_write_cmd = valid_cmd && we_i;
-  wire valid_read_cmd = valid_cmd && !we_i;
+  wire       valid_cmd = stb_i;
+  wire       valid_write_cmd = valid_cmd && we_i;
+  wire       valid_read_cmd = valid_cmd && !we_i;
 
   // Drive the video like a CRT, racing the beam
-  wire pf_bit = pf[xpos < 80 ? (xpos >> 2) : ((!refpf ? xpos - 80 : 159 - xpos) >> 2)];
-  wire p0_bit = (xpos >= x_p0 && xpos < x_p0 + p0_w ||
-                 (p0_copies > 0 && ((xpos - p0_spacing) >= x_p0 &&
-                 (xpos - p0_spacing) < x_p0 + p0_w)) ||
-                 (p0_copies > 1 && ((xpos - (p0_spacing << 1)) >= x_p0 &&
-                 (xpos - (p0_spacing << 1)) < x_p0 + p0_w))) &&
-                  grp0[refp0 ? (xpos - x_p0) >> p0_scale  : 7 - ((xpos - x_p0) >> p0_scale)];
-  wire p1_bit = (xpos >= x_p1 && xpos < x_p1 + p1_w ||
-                 (p1_copies > 0 && ((xpos - p1_spacing) >= x_p1 &&
-                 (xpos - p1_spacing) < x_p1 + p1_w)) ||
-                 (p1_copies > 1 && ((xpos - (p1_spacing << 1)) >= x_p1 &&
-                 (xpos - (p1_spacing << 1)) < x_p1 + p1_w))) &&
-                  grp1[refp1 ? (xpos - x_p1) >> p1_scale : 7 - ((xpos - x_p1) >> p1_scale)];
-  wire bl_bit = enabl && xpos >= x_bl && xpos < x_bl + ball_w;
-  wire m0_bit = enam0 && xpos >= x_m0 && xpos < x_m0 + m0_w;
-  wire m1_bit = enam1 && xpos >= x_m1 && xpos < x_m1 + m1_w;
+  wire       pf_bit   = pf[xpos < 80 ? (xpos >> 2) : ((!refpf ? xpos - 80 : 159 - xpos) >> 2)];
+  wire       p0_bit   = (xpos >= x_p0 && xpos < x_p0 + p0_w ||
+                        (p0_copies > 0 && ((xpos - p0_spacing) >= x_p0 &&
+                        (xpos - p0_spacing) < x_p0 + p0_w)) ||
+                        (p0_copies > 1 && ((xpos - (p0_spacing << 1)) >= x_p0 &&
+                        (xpos - (p0_spacing << 1)) < x_p0 + p0_w))) &&
+                         grp0[refp0 ? (xpos - x_p0) >> p0_scale  : 7 - ((xpos - x_p0) >> p0_scale)];
+  wire       p1_bit   = (xpos >= x_p1 && xpos < x_p1 + p1_w ||
+                        (p1_copies > 0 && ((xpos - p1_spacing) >= x_p1 &&
+                        (xpos - p1_spacing) < x_p1 + p1_w)) ||
+                        (p1_copies > 1 && ((xpos - (p1_spacing << 1)) >= x_p1 &&
+                        (xpos - (p1_spacing << 1)) < x_p1 + p1_w))) &&
+                         grp1[refp1 ? (xpos - x_p1) >> p1_scale : 7 - ((xpos - x_p1) >> p1_scale)];
+  wire       bl_bit   = enabl && xpos >= x_bl && xpos < x_bl + ball_w;
+  wire       m0_bit   = enam0 && xpos >= x_m0 && xpos < x_m0 + m0_w;
+  wire       m1_bit   = enam1 && xpos >= x_m1 && xpos < x_m1 + m1_w;
   wire [6:0] pf_color = (scorepf ? (xpos < 160 ? colup0 : colup1) :  colupf);
 
   // Audio
@@ -117,8 +115,66 @@ module tia #(
 
   // TIA implementation
   always @(posedge clk_i) begin
+    if (rst_i) begin
+      colubk <= 0;
+      colupf <= 0;
+      colup0 <= 0;
+      colup1 <= 0;
+      vsync <= 0;
+      vblank <= 0;
+      wsync <= 0;
+      enam0 <= 0;
+      enam1 <= 0;
+      enabl <= 0;
+      vdelbl <= 0;
+      vdelp0 <= 0;
+      vdelp1 <= 0;
+      refp0 <= 0;
+      refp1 <= 0;
+      refpf <= 0;
+      scorepf <= 0;
+      pf_priority <= 0;
+      grp0 <= 0;
+      grp1 <= 0;
+      x_p0 <= 0;
+      x_p1 <= 0;
+      x_m0 <= 0;
+      x_m1 <= 0;
+      x_bl <= 0;
+      pf <= 0;
+      hmp0 <= 0;
+      hmp1 <= 0;
+      hmm0 <= 0;
+      hmm1 <= 0;
+      hmbl <= 0;
+      cx <= 0;
+      cx_clr <= 0;
+      m0_locked <= 0;
+      m1_locked <= 0;
+      ball_w <= 0;
+      m0_w <= 0;
+      m1_w <= 0;
+      p0_w <= 0;
+      p1_w <= 0;
+      p0_scale <= 0;
+      p1_scale <= 0;
+      p0_copies <= 0;
+      p1_copies <= 0;
+      p0_spacing <= 0;
+      p1_spacing <= 0;
+
+      audc0 <= 0;
+      audc1 <= 0;
+      audv0 <= 0;
+      audv1 <= 0;
+      audf0 <= 0;
+      audf1 <= 0;
+
+      xpos <= 0;
+      ypos <= 0;
+
     // Process reads and writes from CPU
-    if (cpu_enable_i) begin
+    end else if (cpu_enable_i) begin
       cx_clr <= 0;
 
       // Read-only registers
@@ -258,9 +314,9 @@ module tia #(
     if (xpos == 160) wsync <= 0;
 
     // Produce the video signal with a clock 3 times as fast as cpu clock
-    if (!rst_i && enable_i) begin
+    if (enable_i) begin
       if (cx_clr) cx <= 0;
-      pix_clk <= 0;
+      vid_wr <= 0;
     
       if (ypos < 261) begin // 262 clock counts depth
         if (xpos < 227)  begin // 228 clocks width
@@ -320,7 +376,7 @@ module tia #(
                pf_bit ? pf_color : colubk;
           else color <= 7'h00;
           
-          pix_clk <= 1;
+          vid_wr <= 1;
         end            
       end else begin
          ypos <= 0;
