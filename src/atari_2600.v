@@ -101,10 +101,10 @@ module atari_2600
   // ===============================================================
   // Chip selects
   // ===============================================================
-  wire ram_cs = cpu_address >= 16'h0080 && cpu_address < 16'h0100;
-  wire tia_cs = cpu_address < 16'h0080;
-  wire pia_cs = cpu_address >= 16'h0280 && cpu_address < 16'h0300;
-  wire rom_cs = cpu_address[15:12] == 4'hf;
+  wire ram_cs = cpu_address[12] == 0 && cpu_address[9] == 0 && cpu_address[7] == 1;
+  wire tia_cs = cpu_address[12] == 0 && cpu_address[7] == 0;
+  wire pia_cs = cpu_address[12] == 0 && cpu_address[9] == 1 && cpu_address[7] == 1;
+  wire rom_cs = cpu_address[12] == 1;
 
   // ===============================================================
   // 6502 CPU
@@ -155,7 +155,7 @@ module atari_2600
     .rst_i(reset),
     .stb_i(tia_cs),
     .we_i(!rnw),
-    .adr_i(cpu_address[6:0]),
+    .adr_i(cpu_address[5:0]),
     .dat_i(cpu_dout),
     .dat_o(tia_dat_o),
     .buttons({~r_btn[6:1], r_btn[0], 1'b1}),

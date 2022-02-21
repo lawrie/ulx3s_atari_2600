@@ -12,25 +12,25 @@
 	org $F000		
 	
 Start:
-    LDX #0            ; Clear RAM and TIA and set Stack Pointer
-    TXA    
+	LDX #0            ; Clear RAM and TIA and set Stack Pointer
+	TXA    
 Clear:
-    DEX
-    TXS
-    PHA
-    BNE Clear
-    LDA #1            ; Set reflection
+	DEX
+	TXS
+	PHA
+	BNE Clear
+	LDA #1            ; Set reflection
 	STA CTRLPF
-    LDA #$46          ; Set colours
+	LDA #$46          ; Set colours
 	STA COLUPF
-    LDA #0
+	LDA #0
 	STA COLUBK
-;    LDA #$E0          ; Move Ball 2 right, gets done 37 times
+;	LDA #$E0          ; Move Ball 2 right, gets done 37 times
 ;	STA HMBL           ; So ball X position becomes 74
 	LDA #2            ; Start VBLANK
 	STA VBLANK
 Frame:
-    LDA #2
+	LDA #2
 Vsync0:
 	STA VSYNC         ; 3 VSYNC lines
 	STA WSYNC
@@ -40,7 +40,7 @@ Vsync0:
 	STA VSYNC
 	LDY #37           ; 37 VBLANK lines
 Vblank0:
-    STA WSYNC
+	STA WSYNC
 ;	STA HMOVE          ; Move ball and missiles
 	DEY
 	BNE Vblank0
@@ -57,7 +57,7 @@ Picture:
 ;    STA ENABL
 	TYA               ; Divide by line number by 32
 	STA $81
-    LSR
+	LSR
 	LSR
 	LSR
 	LSR
@@ -76,15 +76,15 @@ Picture:
 	INX
 	LDA CastleDef,X
 	STA PF2
-    INY
+	INY
 	STA WSYNC
 	CPY #208
-    BNE Picture
+	BNE Picture
 	LDA #2            ; Set VBLANK
 	STA VBLANK
 	LDY #30           ; 30 Overscan lines
 Overscan:
-    DEY
+	DEY
 	STA WSYNC
 	BNE Overscan
 	JMP Frame
@@ -92,7 +92,7 @@ Overscan:
 CastleDef:
     .byte $F0,$FE,$15          ;XXXXXXXXXXX X X X      R R R RRRRRRRRRRR                                      
     .byte $30,$03,$1F          ;XX        XXXXXXX      RRRRRRR        RR                                      
-	.byte $30,$03,$FF          ;XX        XXXXXXXXXXRRRRRRRRRR        RR                                      
+    .byte $30,$03,$FF          ;XX        XXXXXXXXXXRRRRRRRRRR        RR                                      
     .byte $30,$00,$FF          ;XX          XXXXXXXXRRRRRRRR          RR                                      
     .byte $30,$00,$3F          ;XX          XXXXXX    RRRRRR          RR                                      
     .byte $30,$00,$00          ;XX                                    RR                                      

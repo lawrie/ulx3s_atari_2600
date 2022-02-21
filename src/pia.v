@@ -18,8 +18,7 @@ module pia (
 );
 
   // Button numbers
-  localparam UP = 4, RIGHT = 7, LEFT = 6, DOWN = 5,
-             A = 3, B = 1, X = 0, Y = 2;
+  localparam UP = 4, RIGHT = 7, LEFT = 6, DOWN = 5, A = 3, B = 1, X = 0, Y = 2;
 
   wire valid_cmd = !rst_i && stb_i;
   wire valid_write_cmd = valid_cmd && we_i;
@@ -31,7 +30,7 @@ module pia (
   reg [10:0] interval;
   reg reset_interval;
 
-  always @(posedge clk_i) begin
+  always @(posedge clk_i) if (enable_i) begin
       reset_timer <= 0;
 
       if (valid_read_cmd) begin
@@ -57,19 +56,14 @@ module pia (
 
   end
 
-  reg [4:0] pixel_counter;
-
   always @(posedge clk_i) if(enable_i) begin
-    pixel_counter <= pixel_counter + 1;
     reset_interval <= 0;
 
     if (reset_timer > 0) begin
       time_counter <= 0;
-      pixel_counter <= 0;
       intim <= reset_timer;
-    end else if (pixel_counter == 23) begin
+    end else begin
       time_counter <= time_counter + 1;
-      pixel_counter <= 0;
     end
 
     if (time_counter == interval - 1) begin

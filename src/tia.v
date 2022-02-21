@@ -50,12 +50,12 @@ module tia #(
   reg [3:0]        audc0, audc1, audv0, audv1;
   reg [4:0]        audf0, audf1;
   reg              m0_locked, m1_locked;
-  reg [3:0]        ball_w = 1, m0_w = 1, m1_w = 1;
-  reg [5:0]        p0_w = 8, p1_w = 8;
+  reg [3:0]        ball_w, m0_w, m1_w;
+  reg [5:0]        p0_w, p1_w;
   reg [1:0]        p0_scale, p1_scale;
   reg [1:0]        p0_copies, p1_copies;
   reg [6:0]        p0_spacing, p1_spacing;
-  reg              inpt0 = 0, inpt1 = 0, inpt2 = 0, inpt3 = 0, inpt4 = 0, inpt5 = 0;
+  reg              inpt0, inpt1, inpt2, inpt3, inpt4, inpt5;
   reg              dump_ports, latch_ports;
 
   assign diag = {16'b0, grp0, grp1, pf, 4'b0, x_p0, x_p1, x_m0, x_m1, x_bl, colubk, 1'b0, colup0, 1'b0, colup1, 1'b0, colupf, 1'b0};
@@ -63,9 +63,8 @@ module tia #(
   // Video data
   reg[7:0]         xpos;
   reg[8:0]         ypos;
-
-  reg              pix_clk = 0;
   reg [6:0]        color;
+  reg              pix_clk = 0;
   
   // CPU control
   assign stall_cpu = wsync;
@@ -118,6 +117,7 @@ module tia #(
 
   // TIA implementation
   always @(posedge clk_i) begin
+    // Process reads and writes from CPU
     if (cpu_enable_i) begin
       cx_clr <= 0;
 
@@ -247,21 +247,23 @@ module tia #(
       end
     end
     
+    // Disable ball and missile when outside picture area
     if (ypos < 40 || ypos >= 232) begin
       enabl <= 0;
       enam0 <= 0;
       enam1 <= 0;
     end
 
+    // Un-stall the cpu at hsync
     if (xpos == 160) wsync <= 0;
 
-    if (cx_clr) cx <= 0;
-
-    pix_clk <= 0;
-    
+    // Produce the video signal with a clock 3 times as fast as cpu clock
     if (!rst_i && enable_i) begin
+      if (cx_clr) cx <= 0;
+      pix_clk <= 0;
+    
       if (ypos < 261) begin // 262 clock counts depth
-        if (xpos < 228)  begin
+        if (xpos < 227)  begin // 228 clocks width
            xpos <= xpos + 1;
         end else begin
            xpos <= 0;
@@ -326,7 +328,8 @@ module tia #(
     end
   end
 
-  always @(posedge clk_i) begin
+  // Produce the audio
+  always @(posedge clk_i) if (cpu_enable_i) begin
     audio_left_counter <= audio_left_counter + 1;
     audio_right_counter <= audio_right_counter + 1;
 

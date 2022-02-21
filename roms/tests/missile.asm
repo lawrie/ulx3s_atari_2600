@@ -21,7 +21,7 @@ Clear:
     PHA
     BNE Clear
 
-    LDA #$00         ; Set colours
+    LDA #$00          ; Set colours
     STA COLUPF
     LDA #$5D
     STA COLUBK
@@ -38,7 +38,7 @@ Clear:
     STA HMM1
     LDA #2            ; Start VBLANK
     STA VBLANK
-
+    
 Frame:
     LDA #2
 
@@ -55,7 +55,7 @@ Vsync0:
 Vblank0:
     STA WSYNC
 
-    CPY #28           ; Only do 9 lines for Missile 0
+    CPY #28           ; Only do 10 lines for Missile 0
     BPL Cont_M0
     LDA #0
     STA HMM0
