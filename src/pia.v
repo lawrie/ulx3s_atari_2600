@@ -13,13 +13,13 @@ module pia (
 
   output reg [7:0]                dat_o,
 
-  input [7:0]                     buttons,
+  input [6:0]                     buttons,
   input [3:0]                     sw,
   output reg [7:0]                diag
 );
 
   // Button numbers
-  localparam UP = 4, RIGHT = 7, LEFT = 6, DOWN = 5, A = 3, B = 1, X = 0, Y = 2;
+  localparam UP = 3, RIGHT = 6, LEFT = 5, DOWN = 4, SELECT = 2, RESET = 0, FIRE = 1;
 
   wire valid_cmd = !rst_i && stb_i;
   wire valid_write_cmd = valid_cmd && we_i;
@@ -42,9 +42,9 @@ module pia (
 
       if (valid_read_cmd) begin
         case (adr_i) 
-          7'h00: begin dat_o <= {buttons[7:4], buttons[7:4]}; end// SWCHA
+          7'h00: begin dat_o <= {buttons[6:3], buttons[6:3]}; end// SWCHA
           7'h01: dat_o <= swa_dir; // SWACNT
-          7'h02: dat_o <= {6'h3f, buttons[A], buttons[B]}; // SWCHB
+          7'h02: dat_o <= {6'h3f, buttons[SELECT], buttons[RESET]}; // SWCHB
           7'h03: dat_o <= {2'b0, swb_dir[5:4], 1'b0, swb_dir[2], 2'b0}; // SWBCNT
           7'h04: dat_o <= intim; // INTIM
         endcase

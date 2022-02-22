@@ -160,7 +160,7 @@ module atari_2600
     .adr_i(cpu_address[5:0]),
     .dat_i(cpu_dout),
     .dat_o(tia_dat_o),
-    .buttons({~r_btn[6:1], r_btn[0], 1'b1}),
+    .buttons({~r_btn[6:1], r_btn[0]}),
     .audio_left(audio_l),
     .audio_right(audio_r),
     .stall_cpu(stall_cpu),
@@ -184,7 +184,7 @@ module atari_2600
     .adr_i(cpu_address[6:0]),
     .dat_i(cpu_dout),
     .dat_o(pia_dat_o),
-    .buttons({~r_btn[6:1], r_btn[0], 1'b1}),
+    .buttons({~r_btn[6:1], r_btn[0]}),
     .sw(sw),
     .diag(led)
   );

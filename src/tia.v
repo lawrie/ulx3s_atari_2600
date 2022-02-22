@@ -20,14 +20,14 @@ module tia #(
   output reg [DATA_WIDTH-1:0]     dat_o,
 
   // buttons
-  input [7:0]                     buttons,
+  input [6:0]                     buttons,
 
   // audio
   output                          audio_left,
   output                          audio_right,
 
   // cpu control
-  output                          stall_cpu,
+  output reg                      stall_cpu,
 
   // video
   output reg [6:0]                vid_out,
@@ -36,11 +36,11 @@ module tia #(
   output [127:0]                  diag
 );
   // Button numbers
-  localparam UP = 4, RIGHT = 7, LEFT = 6, DOWN = 5, A = 3, B = 1, X = 0, Y = 2;
+    localparam UP = 3, RIGHT = 6, LEFT = 5, DOWN = 4, SELECT = 2, RESET = 0, FIRE = 1;
 
   // TIA registers
   reg [6:0]        colubk, colup0, colup1, colupf;
-  reg              vsync, vblank, wsync, enam0, enam1, enabl, vdelbl, vdelp0, vdelp1;
+  reg              vsync, vblank, enam0, enam1, enabl, vdelbl, vdelp0, vdelp1;
   reg              refp0, refp1, refpf, scorepf, pf_priority;
   reg [7:0]        grp0, grp1;
   reg [7:0]        x_p0, x_p1, x_m0, x_m1, x_bl;
@@ -56,8 +56,6 @@ module tia #(
   reg [1:0]        p0_scale, p1_scale;
   reg [1:0]        p0_copies, p1_copies;
   reg [6:0]        p0_spacing, p1_spacing;
-  reg              inpt0, inpt1, inpt2, inpt3, inpt4, inpt5;
-  reg              dump_ports, latch_ports;
 
   // Diagnostics
   assign diag = {16'b0, grp0, grp1, pf, 4'b0, x_p0, x_p1, x_m0, x_m1, x_bl, colubk, 1'b0, colup0, 1'b0, colup1, 1'b0, colupf, 1'b0};
@@ -67,9 +65,6 @@ module tia #(
   reg [8:0]        ypos;
 
   assign vid_addr = (ypos - 16) * 160 + xpos;
-
-  // CPU control
-  assign stall_cpu = wsync;
 
   // Wishbone-like interface
   wire       valid_cmd = stb_i;
@@ -117,20 +112,20 @@ module tia #(
       if (valid_read_cmd) begin
         dat_o <= 0;
         case (adr_i)
-          'h30, 'h00: dat_o <= cx[14:13] << 6;       // CXM0P
-          'h31, 'h01: dat_o <= cx[12:11] << 6;       // CXM1P
-          'h32, 'h02: dat_o <= cx[10:9] << 6;        // CXP0FB
-          'h33, 'h03: dat_o <= cx[8:7] << 6;         // CXP1FB
-          'h34, 'h04: dat_o <= cx[6:5] << 6;         // CXM0FB
-          'h35, 'h05: dat_o <= cx[4:3] << 6;         // CXM1FB
-          'h36, 'h06: dat_o <= cx[2] << 7;           // CXBLPF
-          'h37, 'h07: dat_o <= cx[1:0] << 6;         // CXPPMM
-          'h38, 'h08: dat_o <= inpt0 << 7;           // INPT0
-          'h39, 'h09: dat_o <= inpt1 << 7;           // INPT1
-          'h3a, 'h0a: dat_o <= inpt2 << 7;           // INPT2
-          'h3b, 'h0b: dat_o <= inpt3 << 7;           // INPT3
-          'h3c, 'h0c: dat_o <= buttons[A] << 7;      // INPT4
-          'h3d, 'h0d: dat_o <= inpt5 << 7;           // INPT5
+          'h30, 'h00: dat_o <= cx[14:13] << 6;         // CXM0P
+          'h31, 'h01: dat_o <= cx[12:11] << 6;         // CXM1P
+          'h32, 'h02: dat_o <= cx[10:9] << 6;          // CXP0FB
+          'h33, 'h03: dat_o <= cx[8:7] << 6;           // CXP1FB
+          'h34, 'h04: dat_o <= cx[6:5] << 6;           // CXM0FB
+          'h35, 'h05: dat_o <= cx[4:3] << 6;           // CXM1FB
+          'h36, 'h06: dat_o <= cx[2] << 7;             // CXBLPF
+          'h37, 'h07: dat_o <= cx[1:0] << 6;           // CXPPMM
+          'h38, 'h08: dat_o <= 0;                      // INPT0
+          'h39, 'h09: dat_o <= 0;                      // INPT1
+          'h3a, 'h0a: dat_o <= 0;                      // INPT2
+          'h3b, 'h0b: dat_o <= 0;                      // INPT3
+          'h3c, 'h0c: dat_o <= {buttons[FIRE], 7'b0};  // INPT4
+          'h3d, 'h0d: dat_o <= {buttons[FIRE], 7'b0};  // INPT5
         endcase
       end
   end
@@ -144,7 +139,6 @@ module tia #(
       colup1 <= 0;
       vsync <= 0;
       vblank <= 0;
-      wsync <= 0;
       enam0 <= 0;
       enam1 <= 0;
       enabl <= 0;
@@ -185,16 +179,6 @@ module tia #(
       p0_spacing <= 0;
       p1_spacing <= 0;
 
-      audc0 <= 0;
-      audc1 <= 0;
-      audv0 <= 0;
-      audv1 <= 0;
-      audf0 <= 0;
-      audf1 <= 0;
-
-      xpos <= 0;
-      ypos <= 0;
-
     // Process reads and writes from CPU
     end else if (cpu_enable_i) begin
       cx_clr <= 0;
@@ -211,10 +195,10 @@ module tia #(
                 end
           'h01: begin                     // VBLANK
                   vblank <= dat_i[1];
-                  latch_ports <= dat_i[6];
-                  dump_ports <= dat_i[7];
+                  // latch_ports <= dat_i[6];
+                  // dump_ports <= dat_i[7];
                 end
-          'h02: wsync <= 1;               // WSYNC
+          'h02: stall_cpu <= 1;           // WSYNC
           'h03: ;                         // RSYNC
           'h04: begin                     // NUSIZ0 
                   m0_w <= (1 << dat_i[5:4]);
@@ -304,15 +288,8 @@ module tia #(
       end
     end
     
-    // Disable ball and missile when outside picture area
-    if (ypos < 40 || ypos >= 232) begin
-      enabl <= 0;
-      enam0 <= 0;
-      enam1 <= 0;
-    end
-
     // Un-stall the cpu at hsync
-    if (xpos == 160) wsync <= 0;
+    if (xpos == 160) stall_cpu <= 0;
 
     // Produce the video signal with a clock 3 times as fast as cpu clock
     if (enable_i) begin
@@ -386,19 +363,23 @@ module tia #(
   end
 
   // Produce the audio
-  always @(posedge clk_i) if (cpu_enable_i) begin
+  always @(posedge cpu_clk_i) begin
     audio_left_counter <= audio_left_counter + 1;
     audio_right_counter <= audio_right_counter + 1;
 
-    if (audv0 > 0 && audio_left_counter >= audio_div0) begin
-      audio_left <= !audio_left;
-      audio_left_counter <= 0;
-    end
+    if (audv0 > 0 && audc0 > 0) begin
+      if (audio_left_counter >= audio_div0) begin
+        audio_left <= !audio_left;
+        audio_left_counter <= 0;
+      end
+    end else audio_left <= 0;
 
-    if (audv1 > 0 && audio_right_counter >= audio_div1) begin
-      audio_right <= !audio_right;
-      audio_right_counter <= 0;
-    end
+    if (audv1 > 0 && audc1 > 0) begin
+      if (audio_right_counter >= audio_div1) begin
+        audio_right <= !audio_right;
+        audio_right_counter <= 0;
+      end
+    end else audio_right <= 0;
   end
 
 endmodule
