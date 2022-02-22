@@ -91,7 +91,7 @@ Frame:
     LDY #37          ; 37 VBLANK lines
     
     LDA #42
-	STA TIM64T
+    STA TIM64T
     
 Vblank0:
     STA WSYNC
@@ -160,9 +160,9 @@ NoBat1:
     STA VBLANK
 	  
     BIT INPT4
-	BMI Button_Not_Pushed
-	LDA #1
-	STY Game
+    BMI Button_Not_Pushed
+    LDA #1
+    STY Game
 	
 Button_Not_Pushed
 

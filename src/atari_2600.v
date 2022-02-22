@@ -10,6 +10,8 @@ module atari_2600
   input         clk_25mhz,
   // Buttons
   input [6:0]   btn,
+  // Switches
+  input [3:0]   sw,
   // HDMI
   output [3:0]  gpdi_dp, 
   output [3:0]  gpdi_dn,
@@ -79,7 +81,7 @@ module atari_2600
   // ===============================================================
   reg [c_speed:0] clk_counter = 0;
   wire cpu_enable = clk_counter == 0;
-  wire tia_enable = clk_counter < 3;
+  wire tia_enable = clk_counter >= 5 && clk_counter <= 7;
   wire clk_cpu = clk_counter[c_speed];
 
   always @(posedge clk_sys) begin
@@ -164,6 +166,7 @@ module atari_2600
     .stall_cpu(stall_cpu),
     .enable_i(tia_enable),
     .cpu_enable_i(cpu_enable),
+    .cpu_clk_i(clk_cpu),
     .vid_out(vid_dout),
     .vid_addr(vid_out_addr),
     .vid_wr(vid_wr),
@@ -174,15 +177,16 @@ module atari_2600
   // PIA
   // ===============================================================
   pia pia (
-    .clk_i(clk_sys),
+    .clk_i(clk_cpu),
     .rst_i(reset),
     .stb_i(pia_cs),
     .we_i(!rnw),
     .adr_i(cpu_address[6:0]),
     .dat_i(cpu_dout),
     .dat_o(pia_dat_o),
-    .enable_i(cpu_enable),
-    .buttons({~r_btn[6:1], r_btn[0], 1'b1})
+    .buttons({~r_btn[6:1], r_btn[0], 1'b1}),
+    .sw(sw),
+    .diag(led)
   );
 
   // ===============================================================
@@ -418,7 +422,7 @@ module atari_2600
     led8 <= 0;  // blue
   end
 
-  assign led = {led8, led7, led6, led5, led4, led3, led2, led1};
+  //assign led = {led8, led7, led6, led5, led4, led3, led2, led1};
 
   // ===============================================================
   // Led diagnostics

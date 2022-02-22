@@ -10,6 +10,7 @@ module tia #(
   input                           rst_i,
   input                           enable_i,
   input                           cpu_enable_i,
+  input                           cpu_clk_i,
 
   input                           stb_i,
   input                           we_i,
@@ -27,9 +28,9 @@ module tia #(
 
   // cpu control
   output                          stall_cpu,
-    
+
   // video
-  output [6:0]                    vid_out,
+  output reg [6:0]                vid_out,
   output [15:0]                   vid_addr,
   output reg                      vid_wr,
   output [127:0]                  diag
@@ -62,11 +63,9 @@ module tia #(
   assign diag = {16'b0, grp0, grp1, pf, 4'b0, x_p0, x_p1, x_m0, x_m1, x_bl, colubk, 1'b0, colup0, 1'b0, colup1, 1'b0, colupf, 1'b0};
 
   // Video data
-  reg[7:0]         xpos;
-  reg[8:0]         ypos;
-  reg [6:0]        color;
-  
-  assign vid_out = color;
+  reg [7:0]        xpos;
+  reg [8:0]        ypos;
+
   assign vid_addr = (ypos - 16) * 160 + xpos;
 
   // CPU control
@@ -97,13 +96,13 @@ module tia #(
   wire [6:0] pf_color = (scorepf ? (xpos < 160 ? colup0 : colup1) :  colupf);
 
   // Audio
-  wire [19:0] audio_div0 = 256 * audf0 * 
-   (audc0 == 6 || audc0 == 10 ? 31 : 
+  wire [19:0] audio_div0 = 256 * audf0 *
+   (audc0 == 6 || audc0 == 10 ? 31 :
     audc0 == 2 || audc0 == 3 ? 2 :
     audc0 == 12 || audc0 == 13 ? 6 :
     audc0 == 14 ? 93 : 1) ;
 
-  wire [19:0] audio_div1 = 256 * audf1 * 
+  wire [19:0] audio_div1 = 256 * audf1 *
    (audc1 == 6 || audc1 == 10 ? 31 : 
     audc1 == 2 || audc1 == 3 ? 2 :
     audc1 == 12 || audc1 == 13 ? 6 :
@@ -206,7 +205,7 @@ module tia #(
                   if (vsync == 0 && dat_i[1] == 1) begin
                     xpos <= 0;
                     ypos <= 0;
-                  end 
+                  end
                 end
           'h01: begin                     // VBLANK
                   vblank <= dat_i[1];
@@ -216,7 +215,7 @@ module tia #(
           'h02: wsync <= 1;               // WSYNC
           'h03: ;                         // RSYNC
           'h04: begin                     // NUSIZ0 
-                  m0_w <= (1 << dat_i[5:4]); 
+                  m0_w <= (1 << dat_i[5:4]);
                   p0_scale <= 0;
                   case (dat_i[2:0])
                     0: begin p0_w <= 8; p0_copies <= 0; end
@@ -257,7 +256,7 @@ module tia #(
           'h0c: refp1 <= dat_i[3];        // REFP1
           'h0d: for(i = 0; i<4; i = i + 1) pf[i] <= dat_i[4+i];   // PF0
           'h0e: for(i = 0; i<8; i = i + 1) pf[4+i] <= dat_i[7-i]; // PF1
-          'h0f: for(i = 0; i<8; i = i + 1) pf[12+i] <= dat_i[i];   // PF2
+          'h0f: for(i = 0; i<8; i = i + 1) pf[12+i] <= dat_i[i];  // PF2
           'h10: x_p0 <= xpos >= 160 ? 0 : xpos;        // RESP0
           'h11: x_p1 <= xpos >= 160 ? 0 : xpos;        // RESP1
           'h12: x_m0 <= xpos >= 160 ? 0 : xpos;        // RESM0
@@ -291,9 +290,9 @@ module tia #(
                   x_m1 <= x_m1 - hmm1;
                   x_bl <= x_bl - hmbl;
                 end
-          'h2b: begin 
+          'h2b: begin
                   hmp0 <= 0;              // HMCLR
-                  hmp1 <= 0;  
+                  hmp1 <= 0;
                   hmm0 <= 0;  
                   hmm1 <= 0;  
                   hmbl <= 0; 
@@ -317,7 +316,7 @@ module tia #(
     if (enable_i) begin
       if (cx_clr) cx <= 0;
       vid_wr <= 0;
-    
+
       if (ypos < 261) begin // 262 clock counts depth
         if (xpos < 227)  begin // 228 clocks width
            xpos <= xpos + 1;
@@ -363,10 +362,10 @@ module tia #(
 
         if (m0_bit && m1_bit) cx[0] <= 1;
 
-        // Draw pixel     
+        // Draw pixel
         if ( ypos >= 16 && ypos < 256 && xpos < 160) begin // Don't draw in blank or overscan areas
           if (ypos >= 40 && ypos < 232) // Leave gap of 24 pixels at top and bottom
-            color <= 
+            vid_out <=
                bl_bit ? colupf :
                m0_bit ? colup0 :
                m1_bit ? colup1 :
@@ -374,10 +373,10 @@ module tia #(
                p0_bit ? colup0 :
                p1_bit ? colup1 :
                pf_bit ? pf_color : colubk;
-          else color <= 7'h00;
-          
+          else vid_out <= 7'h00;
+
           vid_wr <= 1;
-        end            
+        end
       end else begin
          ypos <= 0;
       end
