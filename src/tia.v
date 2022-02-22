@@ -64,7 +64,7 @@ module tia #(
   reg [7:0]        xpos;
   reg [8:0]        ypos;
 
-  assign vid_addr = (ypos - 16) * 160 + xpos;
+  assign vid_addr = (ypos - 22) * 160 + xpos;
 
   // Wishbone-like interface
   wire       valid_cmd = stb_i;
@@ -342,8 +342,8 @@ module tia #(
         if (m0_bit && m1_bit) cx[0] <= 1;
 
         // Draw pixel
-        if ( ypos >= 16 && ypos < 256 && xpos < 160) begin // Don't draw in blank or overscan areas
-          if (ypos >= 40 && ypos < 232) // Leave gap of 24 pixels at top and bottom
+        if ( ypos >= 40 && ypos < 280 && xpos < 160) begin // Don't draw in blank area
+          if (ypos >= 40 && ypos < 262)
             vid_out <=
                bl_bit ? colupf :
                m0_bit ? colup0 :
