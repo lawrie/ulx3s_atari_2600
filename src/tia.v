@@ -42,7 +42,7 @@ module tia #(
   reg [6:0]        colubk, colup0, colup1, colupf;
   reg              vsync, vblank, enam0, enam1, enabl, vdelbl, vdelp0, vdelp1;
   reg              refp0, refp1, refpf, scorepf, pf_priority;
-  reg [7:0]        grp0, grp1;
+  reg [7:0]        grp0, grp1, old_grp0, old_grp1;
   reg [7:0]        x_p0, x_p1, x_m0, x_m1, x_bl;
   reg [19:0]       pf;
   reg signed [7:0] hmp0, hmp1, hmm0, hmm1, hmbl;
@@ -78,13 +78,17 @@ module tia #(
                         (xpos - p0_spacing) < x_p0 + p0_w)) ||
                         (p0_copies > 1 && ((xpos - (p0_spacing << 1)) >= x_p0 &&
                         (xpos - (p0_spacing << 1)) < x_p0 + p0_w))) &&
-                         grp0[refp0 ? (xpos - x_p0) >> p0_scale  : 7 - ((xpos - x_p0) >> p0_scale)];
+                         (vdelp0 ? 
+			   old_grp0[refp0 ? (xpos - x_p0) >> p0_scale  : 7 - ((xpos - x_p0) >> p0_scale)] :
+			   grp0[refp0 ? (xpos - x_p0) >> p0_scale  : 7 - ((xpos - x_p0) >> p0_scale)]);
   wire       p1_bit   = (xpos >= x_p1 && xpos < x_p1 + p1_w ||
                         (p1_copies > 0 && ((xpos - p1_spacing) >= x_p1 &&
                         (xpos - p1_spacing) < x_p1 + p1_w)) ||
                         (p1_copies > 1 && ((xpos - (p1_spacing << 1)) >= x_p1 &&
                         (xpos - (p1_spacing << 1)) < x_p1 + p1_w))) &&
-                         grp1[refp1 ? (xpos - x_p1) >> p1_scale : 7 - ((xpos - x_p1) >> p1_scale)];
+                         (vdelp1 ?
+			   old_grp1[refp1 ? (xpos - x_p1) >> p1_scale : 7 - ((xpos - x_p1) >> p1_scale)] :
+			   grp1[refp1 ? (xpos - x_p1) >> p1_scale : 7 - ((xpos - x_p1) >> p1_scale)]);
   wire       bl_bit   = enabl && xpos >= x_bl && xpos < x_bl + ball_w;
   wire       m0_bit   = enam0 && xpos >= x_m0 && xpos < x_m0 + m0_w;
   wire       m1_bit   = enam1 && xpos >= x_m1 && xpos < x_m1 + m1_w;
@@ -254,8 +258,8 @@ module tia #(
           'h18: audf1 <= dat_i[4:0];      // AUDF1
           'h19: audv0 <= dat_i[3:0];      // AUDV0
           'h1a: audv1 <= dat_i[3:0];      // AUDV1
-          'h1b: grp0 <= dat_i;            // GRP0
-          'h1c: grp1 <= dat_i;            // GRP1
+	  'h1b: begin grp0 <= dat_i; old_grp1 <= grp1; end            // GRP0
+	  'h1c: begin grp1 <= dat_i; old_grp0 <= grp0; end            // GRP1
           'h1d: enam0 <= dat_i[1];        // ENAM0
           'h1e: enam1 <= dat_i[1];        // ENAM1
           'h1f: enabl <= dat_i[1];        // ENABL
