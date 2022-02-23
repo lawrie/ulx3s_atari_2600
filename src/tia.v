@@ -243,11 +243,11 @@ module tia #(
           'h0d: for(i = 0; i<4; i = i + 1) pf[i] <= dat_i[4+i];   // PF0
           'h0e: for(i = 0; i<8; i = i + 1) pf[4+i] <= dat_i[7-i]; // PF1
           'h0f: for(i = 0; i<8; i = i + 1) pf[12+i] <= dat_i[i];  // PF2
-          'h10: x_p0 <= xpos >= 160 ? 0 : xpos;        // RESP0
-          'h11: x_p1 <= xpos >= 160 ? 0 : xpos;        // RESP1
-          'h12: x_m0 <= xpos >= 160 ? 0 : xpos;        // RESM0
-          'h13: x_m1 <= xpos >= 160 ? 0 : xpos;        // RESM1
-          'h14: x_bl <= xpos >= 160 ? 0 : xpos;        // RESBL
+          'h10: x_p0 <= xpos >= 160 ? 0 : xpos + 5;        // RESP0
+          'h11: x_p1 <= xpos >= 160 ? 0 : xpos + 5;        // RESP1
+          'h12: x_m0 <= xpos >= 160 ? 0 : xpos + 5;        // RESM0
+          'h13: x_m1 <= xpos >= 160 ? 0 : xpos + 5;        // RESM1
+          'h14: x_bl <= xpos >= 160 ? 0 : xpos + 5;        // RESBL
           'h15: audc0 <= dat_i[3:0];      // AUDC0
           'h16: audc1 <= dat_i[3:0];      // AUDC1
           'h17: audf0 <= dat_i[4:0];      // AUDF0

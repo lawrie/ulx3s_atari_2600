@@ -185,8 +185,7 @@ module atari_2600
     .dat_i(cpu_dout),
     .dat_o(pia_dat_o),
     .buttons({~r_btn[6:1], r_btn[0]}),
-    .sw(sw),
-    .diag(led)
+    .sw(sw)
   );
 
   // ===============================================================
@@ -422,7 +421,7 @@ module atari_2600
     led8 <= 0;  // blue
   end
 
-  //assign led = {led8, led7, led6, led5, led4, led3, led2, led1};
+  assign led = {led8, led7, led6, led5, led4, led3, led2, led1};
 
   // ===============================================================
   // Led diagnostics
