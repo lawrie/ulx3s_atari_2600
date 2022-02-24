@@ -15,7 +15,7 @@ module pia (
 
   input [6:0]                     buttons,
   input [3:0]                     sw,
-  output reg [7:0]                diag
+  output [7:0]                    diag
 );
 
   // Button numbers
@@ -33,12 +33,15 @@ module pia (
   reg [10:0] interval;
   reg [7:0]  swa_dir, swb_dir;
 
+  assign diag = intim;
+
   always @(posedge clk_i) begin
     if (rst_i) begin
       interval <= 0;
-      reset_timer <= 0;
       time_counter <= 0;
       intim <= 0;
+      underflow <= 0;
+      instat <= 0;
     end else begin
       reset_timer <= 0;
 
