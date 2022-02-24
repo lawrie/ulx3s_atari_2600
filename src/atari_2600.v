@@ -38,7 +38,7 @@ module atari_2600
   inout         sd_clk, sd_cmd,
   inout   [3:0] sd_d,
   // Leds
-  output reg [7:0]  led
+  output [7:0]  led
 );
 
   // Passthru to ESP32 micropython serial console
@@ -126,7 +126,7 @@ module atari_2600
     .clk(clk_sys),
     .phi(clk_cpu),
     .res(~reset),
-    .so(1'b0),
+    .so(1'b1),
     .rdy(!stall_cpu && !spi_load),
     .nmi(1'b1),
     .irq(1'b1),
@@ -157,8 +157,8 @@ module atari_2600
   // ===============================================================
   // TIA
   // ===============================================================
-  wire [15:0] vid_dout;
-  wire [16:0] vid_out_addr;
+  wire [6:0] vid_dout;
+  wire [15:0] vid_out_addr;
   wire        vid_wr;
   wire [127:0] tia_diag;
 
@@ -171,7 +171,7 @@ module atari_2600
     .dat_i(cpu_dout),
     .dat_o(tia_dat_o),
     .buttons({~r_btn[6:1], r_btn[0]}),
-    .pot(200 - pos),
+    .pot(8'd200 - pos),
     .audio_left(audio_l),
     .audio_right(audio_r),
     .stall_cpu(stall_cpu),
@@ -308,7 +308,7 @@ module atari_2600
   )
   spi_osd_inst
   (
-    .clk_pixel(clk_vga), .clk_pixel_ena(1),
+    .clk_pixel(clk_vga), .clk_pixel_ena(1'b1),
     .i_r(red),
     .i_g(green),
     .i_b(blue),

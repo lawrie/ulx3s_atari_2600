@@ -4,7 +4,7 @@
 `default_nettype none
 module tia #(
   parameter DATA_WIDTH = 8,
-  parameter ADDR_WIDTH = 7
+  parameter ADDR_WIDTH = 6
 ) (
   input                           clk_i,
   input                           rst_i,
@@ -24,8 +24,8 @@ module tia #(
   input [7:0]                     pot,
 
   // audio
-  output                          audio_left,
-  output                          audio_right,
+  output reg                      audio_left,
+  output reg                      audio_right,
 
   // cpu control
   output reg                      stall_cpu,

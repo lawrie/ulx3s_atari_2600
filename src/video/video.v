@@ -1,15 +1,15 @@
 `default_nettype none
 module video (
-  input         clk,
-  input         reset,
-  output [7:0]  vga_r,
-  output [7:0]  vga_b,
-  output [7:0]  vga_g,
-  output        vga_hs,
-  output        vga_vs,
-  output        vga_de,
-  input  [6:0]  vga_data,
-  output [15:0] vga_addr
+  input             clk,
+  input             reset,
+  output [7:0]      vga_r,
+  output [7:0]      vga_b,
+  output [7:0]      vga_g,
+  output            vga_hs,
+  output            vga_vs,
+  output            vga_de,
+  input  [6:0]      vga_data,
+  output reg [15:0] vga_addr
 );
 
   parameter HA = 640;
