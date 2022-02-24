@@ -21,6 +21,7 @@ module tia #(
 
   // buttons
   input [6:0]                     buttons,
+  input [7:0]                     pot,
 
   // audio
   output                          audio_left,
@@ -56,6 +57,7 @@ module tia #(
   reg [1:0]        p0_scale, p1_scale;
   reg [1:0]        p0_copies, p1_copies;
   reg [6:0]        p0_spacing, p1_spacing;
+  reg              latch_ports, dump_ports;
 
   // Diagnostics
   assign diag = {16'b0, grp0, grp1, pf, 4'b0, x_p0, x_p1, x_m0, x_m1, x_bl, colubk, 1'b0, colup0, 1'b0, colup1, 1'b0, colupf, 1'b0};
@@ -124,7 +126,7 @@ module tia #(
           'h35, 'h05: dat_o <= cx[4:3] << 6;           // CXM1FB
           'h36, 'h06: dat_o <= cx[2] << 7;             // CXBLPF
           'h37, 'h07: dat_o <= cx[1:0] << 6;           // CXPPMM
-          'h38, 'h08: dat_o <= 0;                      // INPT0
+          'h38, 'h08: dat_o <= ypos > pot ? 8'h80 : 8'h00;                     // INPT0
           'h39, 'h09: dat_o <= 0;                      // INPT1
           'h3a, 'h0a: dat_o <= 0;                      // INPT2
           'h3b, 'h0b: dat_o <= 0;                      // INPT3
@@ -199,8 +201,8 @@ module tia #(
                 end
           'h01: begin                     // VBLANK
                   vblank <= dat_i[1];
-                  // latch_ports <= dat_i[6];
-                  // dump_ports <= dat_i[7];
+                  latch_ports <= dat_i[6];
+                  dump_ports <= dat_i[7];
                 end
           'h02: stall_cpu <= 1;           // WSYNC
           'h03: ;                         // RSYNC

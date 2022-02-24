@@ -144,6 +144,16 @@ module atari_2600
                    ram_cs ? ram_out :
                    rom_cs ? rom_out : 8'h0;
 
+  // Potentiometer using quadrature sensor
+  reg [6:0] pos;
+
+  quad quad1 (
+    .clk(clk_sys),
+    .quad1(gn[2]),
+    .quad2(gn[3]),
+    .pos(pos)
+  );
+
   // ===============================================================
   // TIA
   // ===============================================================
@@ -161,6 +171,7 @@ module atari_2600
     .dat_i(cpu_dout),
     .dat_o(tia_dat_o),
     .buttons({~r_btn[6:1], r_btn[0]}),
+    .pot(200 - pos),
     .audio_left(audio_l),
     .audio_right(audio_r),
     .stall_cpu(stall_cpu),
