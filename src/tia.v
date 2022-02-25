@@ -117,21 +117,21 @@ module tia #(
       // Read-only registers
       if (valid_read_cmd) begin
         dat_o <= 0;
-        case (adr_i)
-          'h30, 'h00: dat_o <= cx[14:13] << 6;         // CXM0P
-          'h31, 'h01: dat_o <= cx[12:11] << 6;         // CXM1P
-          'h32, 'h02: dat_o <= cx[10:9] << 6;          // CXP0FB
-          'h33, 'h03: dat_o <= cx[8:7] << 6;           // CXP1FB
-          'h34, 'h04: dat_o <= cx[6:5] << 6;           // CXM0FB
-          'h35, 'h05: dat_o <= cx[4:3] << 6;           // CXM1FB
-          'h36, 'h06: dat_o <= cx[2] << 7;             // CXBLPF
-          'h37, 'h07: dat_o <= cx[1:0] << 6;           // CXPPMM
-          'h38, 'h08: dat_o <= ypos > pot ? 8'h80 : 8'h00;                     // INPT0
-          'h39, 'h09: dat_o <= 0;                      // INPT1
-          'h3a, 'h0a: dat_o <= 0;                      // INPT2
-          'h3b, 'h0b: dat_o <= 0;                      // INPT3
-          'h3c, 'h0c: dat_o <= {buttons[FIRE], 7'b0};  // INPT4
-          'h3d, 'h0d: dat_o <= {buttons[FIRE], 7'b0};  // INPT5
+        case (adr_i[3:0])
+          'h0: dat_o <= cx[14:13] << 6;         // CXM0P
+          'h1: dat_o <= cx[12:11] << 6;         // CXM1P
+          'h2: dat_o <= cx[10:9] << 6;          // CXP0FB
+          'h3: dat_o <= cx[8:7] << 6;           // CXP1FB
+          'h4: dat_o <= cx[6:5] << 6;           // CXM0FB
+          'h5: dat_o <= cx[4:3] << 6;           // CXM1FB
+          'h6: dat_o <= cx[2] << 7;             // CXBLPF
+          'h7: dat_o <= cx[1:0] << 6;           // CXPPMM
+          'h8: dat_o <= ypos > pot ? 8'h80 : 8'h00;                     // INPT0
+          'h9: dat_o <= 0;                      // INPT1
+          'ha: dat_o <= 0;                      // INPT2
+          'hb: dat_o <= 0;                      // INPT3
+          'hc: dat_o <= {buttons[FIRE], 7'b0};  // INPT4
+          'hd: dat_o <= {buttons[FIRE], 7'b0};  // INPT5
         endcase
       end
   end
@@ -184,6 +184,17 @@ module tia #(
       p1_copies <= 0;
       p0_spacing <= 0;
       p1_spacing <= 0;
+
+      audv0 <= 0;
+      audv1 <= 0;
+      audc0 <= 0;
+      audc1 <= 0;
+      audf0 <= 0;
+      audf1 <= 0;
+
+      xpos <= 0;
+      xpos <= 0;
+      stall_cpu <= 0;
 
     // Process reads and writes from CPU
     end else if (cpu_enable_i) begin

@@ -100,10 +100,20 @@ module atari_2600
     if (pwr_up_reset_n) pwr_up_reset_counter <= pwr_up_reset_counter + 1;
   end
 
+  // SPI RAM data
+  wire        spi_ram_wr, spi_ram_rd;
+  wire [31:0] spi_ram_addr;
+  wire  [7:0] spi_ram_di;
+  wire  [7:0] spi_ram_do = ram_out;
+  wire        irq;
+
+  assign sd_d[3] = 1'bz; // FPGA pin pullup sets SD card inactive at SPI bus
+
   // ===============================================================
   // Chip selects
   // ===============================================================
   wire ram_cs = cpu_address[12] == 0 && cpu_address[9] == 0 && cpu_address[7] == 1;
+  wire cart_ram_cs = rom_size == 2'b11 && ~sw[1] && cpu_address[12] == 1 && cpu_address[11:8] == 0;
   wire tia_cs = cpu_address[12] == 0 && cpu_address[7] == 0;
   wire pia_cs = cpu_address[12] == 0 && cpu_address[9] == 1 && cpu_address[7] == 1;
   wire rom_cs = cpu_address[12] == 1;
@@ -113,6 +123,7 @@ module atari_2600
   // ===============================================================
   wire [7:0]  rom_out;
   wire [7:0]  ram_out;
+  wire [7:0]  cart_ram_out;
   wire [7:0]  pia_dat_o;
   wire [7:0]  tia_dat_o;
   wire [7:0]  cpu_din;
@@ -137,11 +148,42 @@ module atari_2600
   );
 
   // ===============================================================
+  // Bank switching
+  // ===============================================================
+  reg [1:0] bank;
+  reg [1:0] rom_size = 0;
+
+  always @(posedge clk_sys) begin
+    if (reset) begin
+      bank <= 0;
+    end begin
+      if (spi_ram_wr && spi_ram_addr[31:24] == 0) begin
+	if (spi_ram_addr[13:0] == 0) rom_size <= 0;
+        if (spi_ram_addr[12] == 1) rom_size[0] <= 1;
+        if (spi_ram_addr[13] == 1) rom_size[1] <= 1;
+      end
+      if (rom_size == 2'b01) begin
+        if (cpu_address[12:0] == 13'h1ff8 && clk_counter == 15) bank <= 0;
+        if (cpu_address[12:0] == 13'h1ff9 && clk_counter == 15)  bank <= 1;
+      end else if (rom_size == 2'b11) begin
+        if (cpu_address[12:0] == 13'h1ff6 && clk_counter == 15) bank <= 0;
+        if (cpu_address[12:0] == 13'h1ff7 && clk_counter == 15) bank <= 1;
+        if (cpu_address[12:0] == 13'h1ff8 && clk_counter == 15) bank <= 2;
+        if (cpu_address[12:0] == 13'h1ff9 && clk_counter == 15) bank <= 3;
+      end
+    end
+  end
+
+  assign led = {rom_size, bank};
+
+   
+  // ===============================================================
   // Address multiplexer
   // ===============================================================
   assign cpu_din = tia_cs ? tia_dat_o :
                    pia_cs ? pia_dat_o :
                    ram_cs ? ram_out :
+		   cart_ram_cs ? cart_ram_out :
                    rom_cs ? rom_out : 8'h0;
 
   // Potentiometer using quadrature sensor
@@ -202,23 +244,15 @@ module atari_2600
   // ===============================================================
   // ROM
   // ===============================================================
-  wire        spi_ram_wr, spi_ram_rd;
-  wire [31:0] spi_ram_addr;
-  wire  [7:0] spi_ram_di;
-  wire  [7:0] spi_ram_do = ram_out;
-  wire irq;
-
-  assign sd_d[3] = 1'bz; // FPGA pin pullup sets SD card inactive at SPI bus
-
   dprom #(
     .DATA_WIDTH(8),
-    .DEPTH(4 * 1024),
+    .DEPTH(16 * 1024),
     .MEM_INIT_FILE("../roms/rom.mem")
   ) rom (
     .clk(clk_sys),
-    .addr(cpu_address[11:0]),
+    .addr({bank, cpu_address[11:0]}),
     .dout(rom_out),
-    .addr_b(spi_ram_addr[11:0]),
+    .addr_b(spi_ram_addr[13:0]),
     .we_b(spi_ram_wr && spi_ram_addr[31:24] == 0),
     .din_b(spi_ram_di)
   );
@@ -235,6 +269,20 @@ module atari_2600
     .dout(ram_out),
     .din(cpu_dout),
     .we(!rnw && ram_cs)
+  );
+
+  // ===============================================================
+  // Cart RAM
+  // ===============================================================
+  ram #(
+    .DATA_WIDTH(8),
+    .DEPTH(128)
+  ) cart_ram (
+    .clk(clk_sys),
+    .addr(cpu_address[6:0]),
+    .dout(cart_ram_out),
+    .din(cpu_dout),
+    .we(!rnw && cart_ram_cs)
   );
 
   // ===============================================================
@@ -432,7 +480,7 @@ module atari_2600
     led8 <= 0;  // blue
   end
 
-  assign led = {led8, led7, led6, led5, led4, led3, led2, led1};
+  //assign led = {led8, led7, led6, led5, led4, led3, led2, led1};
 
   // ===============================================================
   // Led diagnostics
