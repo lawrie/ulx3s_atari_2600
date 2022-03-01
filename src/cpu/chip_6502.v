@@ -20,7 +20,8 @@ module chip_6502 (
     output    [7:0] dbo,
     output          rw,
     output          sync,
-    output   [15:0] ab);
+    output   [15:0] ab,
+    output   [15:0] pc);
 
     // Node states
     wire [`NUM_NODES-1:0] no;
@@ -58,6 +59,13 @@ module chip_6502 (
         no[`NODE_ab11], no[`NODE_ab10], no[`NODE_ab9],  no[`NODE_ab8],
         no[`NODE_ab7],  no[`NODE_ab6],  no[`NODE_ab5],  no[`NODE_ab4],
         no[`NODE_ab3],  no[`NODE_ab2],  no[`NODE_ab1],  no[`NODE_ab0]
+    };
+
+    assign pc[15:0] = {
+        no[`NODE_pch7], no[`NODE_pch6], no[`NODE_pch5], no[`NODE_pch4],
+        no[`NODE_pch3], no[`NODE_pch2], no[`NODE_pch1], no[`NODE_pch0],
+        no[`NODE_pcl7], no[`NODE_pcl6], no[`NODE_pcl5], no[`NODE_pcl4],
+        no[`NODE_pcl3], no[`NODE_pcl2], no[`NODE_pcl1], no[`NODE_pcl0]
     };
 
     assign rw   = no[`NODE_rw];
