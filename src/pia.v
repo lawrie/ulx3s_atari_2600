@@ -14,7 +14,6 @@ module pia (
   output reg [7:0]                dat_o,
 
   input [6:0]                     buttons,
-  input [3:0]                     sw,
   output [7:0]                    diag
 );
 

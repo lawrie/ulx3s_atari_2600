@@ -10,6 +10,6 @@ VERILOG = ../src/atari_2600.v ../src/tia.v ../src/pia.v \
 	  ../src/video/hdmi.v ../src/video/video.v
 
 PIN_DEF = ulx3s_v20.lpf
-
+DEVICE = 12k
 include ulx3s.mk
 

@@ -159,8 +159,8 @@ module atari_2600
   // ===============================================================
   // Bank switching
   // ===============================================================
-  reg [1:0] bank;
-  reg [1:0] rom_size = 0;
+  reg [2:0] bank;
+  reg [2:0] rom_size = 0;
 
   always @(posedge clk_sys) begin
     if (reset) begin
@@ -170,15 +170,30 @@ module atari_2600
 	if (spi_ram_addr[13:0] == 0) rom_size <= 0;
         if (spi_ram_addr[12] == 1) rom_size[0] <= 1;
         if (spi_ram_addr[13] == 1) rom_size[1] <= 1;
+        if (spi_ram_addr[14] == 1) rom_size[2] <= 1;
       end
-      if (rom_size == 2'b01) begin
-        if (cpu_address[12:0] == 13'h1ff8 && clk_counter == 15) bank <= 0;
-        if (cpu_address[12:0] == 13'h1ff9 && clk_counter == 15)  bank <= 1;
-      end else if (rom_size == 2'b11) begin
+      if (rom_size == 3'b001) begin
+        if (sw[2]) begin // F8 bank-switching
+          if (cpu_address[12:0] == 13'h1ff8 && clk_counter == 15) bank <= 0;
+          if (cpu_address[12:0] == 13'h1ff9 && clk_counter == 15)  bank <= 1;
+        end else begin // FE bank-switching
+          if (cpu_address[12:0] == 13'h01fe && clk_counter == 15) bank <= 0;
+          if (cpu_address[12:0] == 13'h11fe && clk_counter == 15)  bank <= 1;
+        end
+      end else if (rom_size == 3'b011) begin // F6 bank switching
         if (cpu_address[12:0] == 13'h1ff6 && clk_counter == 15) bank <= 0;
         if (cpu_address[12:0] == 13'h1ff7 && clk_counter == 15) bank <= 1;
         if (cpu_address[12:0] == 13'h1ff8 && clk_counter == 15) bank <= 2;
         if (cpu_address[12:0] == 13'h1ff9 && clk_counter == 15) bank <= 3;
+      end else if (rom_size == 3'b111) begin // F4 bank switching
+        if (cpu_address[12:0] == 13'h1ff4 && clk_counter == 15) bank <= 0;
+        if (cpu_address[12:0] == 13'h1ff5 && clk_counter == 15) bank <= 1;
+        if (cpu_address[12:0] == 13'h1ff6 && clk_counter == 15) bank <= 2;
+        if (cpu_address[12:0] == 13'h1ff7 && clk_counter == 15) bank <= 3;
+        if (cpu_address[12:0] == 13'h1ff8 && clk_counter == 15) bank <= 4;
+        if (cpu_address[12:0] == 13'h1ff9 && clk_counter == 15) bank <= 5;
+        if (cpu_address[12:0] == 13'h1ffa && clk_counter == 15) bank <= 6;
+        if (cpu_address[12:0] == 13'h1ffb && clk_counter == 15) bank <= 7;
       end
     end
   end
@@ -237,6 +252,8 @@ module atari_2600
   // ===============================================================
   // PIA
   // ===============================================================
+  wire [7:0] pia_diag;
+
   pia pia (
     .clk_i(clk_cpu),
     .rst_i(reset),
@@ -246,7 +263,7 @@ module atari_2600
     .dat_i(cpu_dout),
     .dat_o(pia_dat_o),
     .buttons({~r_btn[6:1], r_btn[0]}),
-    .sw(sw)
+    .diag(pia_diag)
   );
 
   // ===============================================================
@@ -254,13 +271,13 @@ module atari_2600
   // ===============================================================
   dprom #(
     .DATA_WIDTH(8),
-    .DEPTH(16 * 1024),
+    .DEPTH(32 * 1024),
     .MEM_INIT_FILE("../roms/rom.mem")
   ) rom (
     .clk(clk_sys),
     .addr({bank, cpu_address[11:0]}),
     .dout(rom_out),
-    .addr_b(spi_ram_addr[13:0]),
+    .addr_b(spi_ram_addr[14:0]),
     .we_b(spi_ram_wr && spi_ram_addr[31:24] == 0),
     .din_b(spi_ram_di)
   );
@@ -507,6 +524,7 @@ module atari_2600
     end
   endgenerate
 
+  // Show last valid PC on the leds
   reg [15:0] old_pc;
 
   always @(posedge clk_cpu) begin

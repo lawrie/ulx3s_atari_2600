@@ -24,8 +24,8 @@ module tia #(
   input [7:0]                     pot,
 
   // audio
-  output reg                      audio_left,
-  output reg                      audio_right,
+  output [3:0]                    audio_left,
+  output [3:0]                    audio_right,
 
   // cpu control
   output reg                      stall_cpu,
@@ -379,24 +379,29 @@ module tia #(
     end
   end
 
+  reg audio_l, audio_r;
+
   // Produce the audio
   always @(posedge cpu_clk_i) begin
     audio_left_counter <= audio_left_counter + 1;
     audio_right_counter <= audio_right_counter + 1;
 
-    if (audv0 > 0 && audc0 > 0) begin
+    if (audc0 > 0) begin
       if (audio_left_counter >= audio_div0) begin
-        audio_left <= !audio_left;
+        audio_l <= audio_l;
         audio_left_counter <= 0;
       end
-    end else audio_left <= 0;
+    end else audio_l <= 1;
 
-    if (audv1 > 0 && audc1 > 0) begin
+    if (audc1 > 0) begin
       if (audio_right_counter >= audio_div1) begin
-        audio_right <= !audio_right;
+        audio_r <= !audio_r;
         audio_right_counter <= 0;
       end
-    end else audio_right <= 0;
+    end else audio_r <= 1;
   end
+
+  assign audio_left = audio_l * audv0;
+  assign audio_right = audio_r * audv1;
 
 endmodule
