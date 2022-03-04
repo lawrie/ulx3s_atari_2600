@@ -96,7 +96,7 @@ module tia #(
   wire       m1_bit   = enam1 && xpos >= x_m1 && xpos < x_m1 + m1_w;
   wire [6:0] pf_color = (scorepf ? (xpos < 160 ? colup0 : colup1) :  colupf);
 
-  // Audio
+  // Audio - only frequencies supported, not other waveforms
   wire [19:0] audio_div0 = 256 * audf0 *
    (audc0 == 6 || audc0 == 10 ? 31 :
     audc0 == 2 || audc0 == 3 ? 2 :
@@ -386,14 +386,14 @@ module tia #(
     audio_left_counter <= audio_left_counter + 1;
     audio_right_counter <= audio_right_counter + 1;
 
-    if (audc0 > 0) begin
+    if (audc0 != 4'h0 && audc0 != 4'hb) begin
       if (audio_left_counter >= audio_div0) begin
         audio_l <= audio_l;
         audio_left_counter <= 0;
       end
     end else audio_l <= 1;
 
-    if (audc1 > 0) begin
+    if (audc1 != 4'h0 && audc1 != 4'hb) begin
       if (audio_right_counter >= audio_div1) begin
         audio_r <= !audio_r;
         audio_right_counter <= 0;

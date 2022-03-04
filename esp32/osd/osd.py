@@ -190,9 +190,9 @@ class osd:
         import ld_nes
         s=ld_nes.ld_nes(self.spi,self.cs)
         s.ctrl(2)
-        s.load_stream(open(filename,"rb"))
+        cart_ram = s.load_stream(open(filename,"rb"))
 	s.ctrl(1)
-	s.ctrl(0)
+	s.ctrl(4 if cart_ram else 0)
         del s
         gc.collect()
         self.enable[0]=0

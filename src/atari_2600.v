@@ -131,7 +131,7 @@ module atari_2600
   // Chip selects
   // ===============================================================
   wire ram_cs = cpu_address[12] == 0 && cpu_address[9] == 0 && cpu_address[7] == 1;
-  wire cart_ram_cs = rom_size == 2'b11 && ~sw[1] && cpu_address[12] == 1 && cpu_address[11:8] == 0;
+  wire cart_ram_cs = r_cpu_control[2] && cpu_address[12] == 1 && cpu_address[11:8] == 0;
   wire tia_cs = cpu_address[12] == 0 && cpu_address[7] == 0;
   wire pia_cs = cpu_address[12] == 0 && cpu_address[9] == 1 && cpu_address[7] == 1;
   wire rom_cs = cpu_address[12] == 1;

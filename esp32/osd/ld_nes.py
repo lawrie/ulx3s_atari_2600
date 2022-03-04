@@ -32,6 +32,7 @@ class ld_nes:
 
   # read from file -> write to SPI RAM
   def load_stream(self, filedata, addr=0, maxlen=0x110000, blocksize=256):
+    cart_ram = 0
     block = bytearray(blocksize)
     # Request load
     self.cs.on()
@@ -39,11 +40,15 @@ class ld_nes:
     bytes_loaded = 0
     while bytes_loaded < maxlen:
       if filedata.readinto(block):
+        if bytes_loaded == 0:
+          if block[:128] == block[128:256]:
+            cart_ram = 1
         self.spi.write(block)
         bytes_loaded += blocksize
       else:
         break
     self.cs.off()
+    return cart_ram
 
   # read from SPI RAM -> write to file
   def save_stream(self, filedata, addr=0, length=1024, blocksize=1024):
