@@ -23,6 +23,8 @@ module tia #(
   input [6:0]                     buttons,
   input [7:0]                     pot,
 
+  input                           pal,
+
   // audio
   output [3:0]                    audio_left,
   output [3:0]                    audio_right,

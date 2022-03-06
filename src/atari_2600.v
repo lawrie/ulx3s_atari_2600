@@ -160,11 +160,23 @@ module atari_2600
   // Bank switching
   // ===============================================================
   reg [2:0] bank;
+  reg [2:0] bank0;
+  reg [2:0] bank1;
+  reg [2:0] bank2;
   reg [2:0] rom_size = 0;
+
+  wire f8 = rom_size == 3'b001 && sw[2];
+  wire e0 = rom_size == 3'b001 && ~sw[3];
+  wire fe = rom_size == 3'b001 && ~sw[2];
+  wire f6 = rom_size == 3'b011;
+  wire f4 = rom_size == 3'b111;
 
   always @(posedge clk_sys) begin
     if (reset) begin
       bank <= 0;
+      bank0 <= 0;
+      bank1 <= 0;
+      bank2 <= 0;
     end begin
       if (spi_ram_wr && spi_ram_addr[31:24] == 0) begin
 	if (spi_ram_addr[13:0] == 0) rom_size <= 0;
@@ -172,28 +184,53 @@ module atari_2600
         if (spi_ram_addr[13] == 1) rom_size[1] <= 1;
         if (spi_ram_addr[14] == 1) rom_size[2] <= 1;
       end
-      if (rom_size == 3'b001) begin
-        if (sw[2]) begin // F8 bank-switching
-          if (cpu_address[12:0] == 13'h1ff8 && clk_counter == 15) bank <= 0;
-          if (cpu_address[12:0] == 13'h1ff9 && clk_counter == 15)  bank <= 1;
-        end else begin // FE bank-switching
-          if (cpu_address[12:0] == 13'h01fe && clk_counter == 15) bank <= 0;
-          if (cpu_address[12:0] == 13'h11fe && clk_counter == 15)  bank <= 1;
-        end
-      end else if (rom_size == 3'b011) begin // F6 bank switching
-        if (cpu_address[12:0] == 13'h1ff6 && clk_counter == 15) bank <= 0;
-        if (cpu_address[12:0] == 13'h1ff7 && clk_counter == 15) bank <= 1;
-        if (cpu_address[12:0] == 13'h1ff8 && clk_counter == 15) bank <= 2;
-        if (cpu_address[12:0] == 13'h1ff9 && clk_counter == 15) bank <= 3;
-      end else if (rom_size == 3'b111) begin // F4 bank switching
-        if (cpu_address[12:0] == 13'h1ff4 && clk_counter == 15) bank <= 0;
-        if (cpu_address[12:0] == 13'h1ff5 && clk_counter == 15) bank <= 1;
-        if (cpu_address[12:0] == 13'h1ff6 && clk_counter == 15) bank <= 2;
-        if (cpu_address[12:0] == 13'h1ff7 && clk_counter == 15) bank <= 3;
-        if (cpu_address[12:0] == 13'h1ff8 && clk_counter == 15) bank <= 4;
-        if (cpu_address[12:0] == 13'h1ff9 && clk_counter == 15) bank <= 5;
-        if (cpu_address[12:0] == 13'h1ffa && clk_counter == 15) bank <= 6;
-        if (cpu_address[12:0] == 13'h1ffb && clk_counter == 15) bank <= 7;
+      if (clk_counter == 15) begin
+        if (e0) begin // E0 bank switching
+          if (cpu_address[12:0] == 13'h1fe0) bank0 <= 0;
+          if (cpu_address[12:0] == 13'h1fe1) bank0 <= 1;
+          if (cpu_address[12:0] == 13'h1fe2) bank0 <= 2;
+          if (cpu_address[12:0] == 13'h1fe3) bank0 <= 3;
+          if (cpu_address[12:0] == 13'h1fe4) bank0 <= 4;
+          if (cpu_address[12:0] == 13'h1fe5) bank0 <= 5;
+          if (cpu_address[12:0] == 13'h1fe6) bank0 <= 6;
+          if (cpu_address[12:0] == 13'h1fe7) bank0 <= 7;
+          if (cpu_address[12:0] == 13'h1fe8) bank1 <= 0;
+          if (cpu_address[12:0] == 13'h1fe9) bank1 <= 1;
+          if (cpu_address[12:0] == 13'h1fea) bank1 <= 2;
+          if (cpu_address[12:0] == 13'h1feb) bank1 <= 3;
+          if (cpu_address[12:0] == 13'h1fec) bank1 <= 4;
+          if (cpu_address[12:0] == 13'h1fed) bank1 <= 5;
+          if (cpu_address[12:0] == 13'h1fee) bank1 <= 6;
+          if (cpu_address[12:0] == 13'h1fef) bank1 <= 7;
+          if (cpu_address[12:0] == 13'h1ff0) bank2 <= 0;
+          if (cpu_address[12:0] == 13'h1ff1) bank2 <= 1;
+          if (cpu_address[12:0] == 13'h1ff2) bank2 <= 2;
+          if (cpu_address[12:0] == 13'h1ff3) bank2 <= 3;
+          if (cpu_address[12:0] == 13'h1ff4) bank2 <= 4;
+          if (cpu_address[12:0] == 13'h1ff5) bank2 <= 5;
+          if (cpu_address[12:0] == 13'h1ff6) bank2 <= 6;
+          if (cpu_address[12:0] == 13'h1ff7) bank2 <= 7;
+        end else if (fe) begin // FE bank-switching
+          if (cpu_address[12:0] == 13'h01fe) bank <= 0;
+          if (cpu_address[12:0] == 13'h11fe) bank <= 1;
+        end else if (f8) begin // F8 bank-switching
+          if (cpu_address[12:0] == 13'h1ff8) bank <= 0;
+          if (cpu_address[12:0] == 13'h1ff9)  bank <= 1;
+        end else if (f6) begin // F6 bank switching
+          if (cpu_address[12:0] == 13'h1ff6) bank <= 0;
+          if (cpu_address[12:0] == 13'h1ff7) bank <= 1;
+          if (cpu_address[12:0] == 13'h1ff8) bank <= 2;
+          if (cpu_address[12:0] == 13'h1ff9) bank <= 3;
+        end else if (f4) begin // F4 bank switching
+          if (cpu_address[12:0] == 13'h1ff4) bank <= 0;
+          if (cpu_address[12:0] == 13'h1ff5) bank <= 1;
+          if (cpu_address[12:0] == 13'h1ff6) bank <= 2;
+          if (cpu_address[12:0] == 13'h1ff7) bank <= 3;
+          if (cpu_address[12:0] == 13'h1ff8) bank <= 4;
+          if (cpu_address[12:0] == 13'h1ff9) bank <= 5;
+          if (cpu_address[12:0] == 13'h1ffa) bank <= 6;
+          if (cpu_address[12:0] == 13'h1ffb) bank <= 7;
+	end
       end
     end
   end
@@ -246,6 +283,7 @@ module atari_2600
     .vid_out(vid_dout),
     .vid_addr(vid_out_addr),
     .vid_wr(vid_wr),
+    .pal(1'b0),
     .diag(tia_diag)
   );
 
@@ -263,19 +301,33 @@ module atari_2600
     .dat_i(cpu_dout),
     .dat_o(pia_dat_o),
     .buttons({~r_btn[6:1], r_btn[0]}),
+    .sw(sw),
     .diag(pia_diag)
   );
 
   // ===============================================================
   // ROM
   // ===============================================================
+  reg [14:0] rom_address;
+
+  always @* begin
+    if (e0) begin
+      case(cpu_address[11:10])
+        0: rom_address = {bank0, cpu_address[9:0]};
+        1: rom_address = {bank1, cpu_address[9:0]};
+        2: rom_address = {bank2, cpu_address[9:0]};
+        3: rom_address = {3'b111, cpu_address[9:0]};
+      endcase
+    end else rom_address = {bank, cpu_address[11:0]};
+  end
+
   dprom #(
     .DATA_WIDTH(8),
     .DEPTH(32 * 1024),
     .MEM_INIT_FILE("../roms/rom.mem")
   ) rom (
     .clk(clk_sys),
-    .addr({bank, cpu_address[11:0]}),
+    .addr(rom_address),
     .dout(rom_out),
     .addr_b(spi_ram_addr[14:0]),
     .we_b(spi_ram_wr && spi_ram_addr[31:24] == 0),
