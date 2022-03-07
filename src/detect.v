@@ -77,3 +77,50 @@ assign hasMatch = m1 | m2 | m3 | m4 | m5 | m6 | m7 | m8;
 
 endmodule
 
+module detect_fe (
+  input        clk,
+  input        reset,
+  input        ena,
+  input [14:0] addr,
+  input [7:0]  data,
+  output       hasMatch
+);
+
+reg m1, m2, m3, m4;
+
+match_bytes #(.num_bytes(5), .pattern(40'h2000d0c6c5)) match1 (
+  .clk(clk),
+  .ena(ena),
+  .addr(addr),
+  .data(data),
+  .hasMatch(m1)
+);
+
+match_bytes #(.num_bytes(5), .pattern(40'h20c3f8a582)) match2 (
+  .clk(clk),
+  .ena(ena),
+  .addr(addr),
+  .data(data),
+  .hasMatch(m2)
+);
+
+match_bytes #(.num_bytes(5), .pattern(40'hd0fb2073fe)) match3 (
+  .clk(clk),
+  .ena(ena),
+  .addr(addr),
+  .data(data),
+  .hasMatch(m3)
+);
+
+match_bytes #(.num_bytes(5), .pattern(40'h2000f084d6)) match4 (
+  .clk(clk),
+  .ena(ena),
+  .addr(addr),
+  .data(data),
+  .hasMatch(m4)
+);
+
+assign hasMatch = m1 | m2 | m3 | m4;
+
+endmodule
+

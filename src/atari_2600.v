@@ -165,10 +165,10 @@ module atari_2600
   reg [2:0] bank2;
   reg [2:0] rom_size = 0;
 
-  wire e0_detect;
-  wire f8 = rom_size == 3'b001 && sw[2];
+  wire e0_detect, fe_detect;
+  wire f8 = rom_size == 3'b001;
   wire e0 = rom_size == 3'b001 && e0_detect;
-  wire fe = rom_size == 3'b001 && ~sw[2];
+  wire fe = rom_size == 3'b001 && fe_detect;
   wire f6 = rom_size == 3'b011;
   wire f4 = rom_size == 3'b111;
 
@@ -428,6 +428,14 @@ module atari_2600
     .hasMatch(e0_detect)
   );
 
+  detect_fe detect_fe (
+    .clk(clk_sys),
+    .ena(spi_ram_wr && !old_spi_ram_wr && spi_ram_addr[31:24] == 0),
+    .addr(spi_ram_addr[14:0]),
+    .data(spi_ram_di),
+    .hasMatch(fe_detect)
+  );
+
   // ===============================================================
   // SPI Slave for OSD display
   // ===============================================================
@@ -568,7 +576,7 @@ module atari_2600
     led5 <= tia_cs;     // red
     led6 <= pia_cs;     // yellow
     led7 <= tia_enable; // green
-    led8 <= e0_detect;  // blue
+    led8 <= fe_detect;  // blue
   end
 
   assign led = {led8, led7, led6, led5, led4, led3, led2, led1};
