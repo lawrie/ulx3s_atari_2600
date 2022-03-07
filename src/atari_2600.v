@@ -165,8 +165,9 @@ module atari_2600
   reg [2:0] bank2;
   reg [2:0] rom_size = 0;
 
+  wire e0_detect;
   wire f8 = rom_size == 3'b001 && sw[2];
-  wire e0 = rom_size == 3'b001 && ~sw[3];
+  wire e0 = rom_size == 3'b001 && e0_detect;
   wire fe = rom_size == 3'b001 && ~sw[2];
   wire f6 = rom_size == 3'b011;
   wire f4 = rom_size == 3'b111;
@@ -408,11 +409,24 @@ module atari_2600
 
   assign wifi_gpio0 = ~irq;
 
+  reg old_spi_ram_wr;
   always @(posedge clk_sys) begin
+    old_spi_ram_wr <= spi_ram_wr;
     if (spi_ram_wr && spi_ram_addr[31:24] == 8'hFF) begin
       r_cpu_control <= spi_ram_di;
     end
   end
+
+  // ===============================================================
+  // Bank-switching detection;
+  // ===============================================================
+  detect_e0 detect_e0 (
+    .clk(clk_sys),
+    .ena(spi_ram_wr && !old_spi_ram_wr && spi_ram_addr[31:24] == 0),
+    .addr(spi_ram_addr[14:0]),
+    .data(spi_ram_di),
+    .hasMatch(e0_detect)
+  );
 
   // ===============================================================
   // SPI Slave for OSD display
@@ -554,7 +568,7 @@ module atari_2600
     led5 <= tia_cs;     // red
     led6 <= pia_cs;     // yellow
     led7 <= tia_enable; // green
-    led8 <= 0;  // blue
+    led8 <= e0_detect;  // blue
   end
 
   assign led = {led8, led7, led6, led5, led4, led3, led2, led1};
@@ -577,14 +591,14 @@ module atari_2600
   endgenerate
 
   // Show last valid PC on the leds
-  reg [15:0] old_pc;
+  reg [15:0] valid_pc;
 
   always @(posedge clk_cpu) begin
-    if (pc[15:12] == 4'hf) old_pc <= pc;
+    if (pc[15:12] == 4'hf) valid_pc <= pc;
   end
 
   always @(posedge clk_sys) begin
-    diag16 <= old_pc;
+    diag16 <= valid_pc;
   end
 
 endmodule
