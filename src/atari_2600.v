@@ -135,7 +135,7 @@ module atari_2600
   wire tia_cs = cpu_address[12] == 0 && cpu_address[7] == 0;
   wire pia_cs = cpu_address[12] == 0 && cpu_address[9] == 1 && cpu_address[7] == 1;
   wire rom_cs = cpu_address[12] == 1;
-  wire sync;
+  wire pal = r_cpu_control[3];
 
   // ===============================================================
   // 6502 CPU
@@ -152,8 +152,7 @@ module atari_2600
     .dbi(cpu_din),
     .dbo(cpu_dout),
     .ab(cpu_address),
-    .pc(pc),
-    .sync(sync)
+    .pc(pc)
   );
 
   // ===============================================================
@@ -284,7 +283,7 @@ module atari_2600
     .vid_out(vid_dout),
     .vid_addr(vid_out_addr),
     .vid_wr(vid_wr),
-    .pal(1'b0),
+    .pal(pal),
     .diag(tia_diag)
   );
 
@@ -467,6 +466,8 @@ module atari_2600
 
   video vga (
     .clk(clk_vga),
+    .reset(1'b0),
+    .pal(pal),
     .vga_r(red),
     .vga_g(green),
     .vga_b(blue),
@@ -576,7 +577,7 @@ module atari_2600
     led5 <= tia_cs;     // red
     led6 <= pia_cs;     // yellow
     led7 <= tia_enable; // green
-    led8 <= fe_detect;  // blue
+    led8 <= pal;        // blue
   end
 
   assign led = {led8, led7, led6, led5, led4, led3, led2, led1};

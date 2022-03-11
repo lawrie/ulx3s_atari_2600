@@ -191,8 +191,11 @@ class osd:
         s=ld_nes.ld_nes(self.spi,self.cs)
         s.ctrl(2)
         cart_ram = s.load_stream(open(filename,"rb"))
+        pal = 0
+        if "_pal" in filename:
+          pal = 8
 	s.ctrl(1)
-	s.ctrl(4 if cart_ram else 0)
+	s.ctrl((4 if cart_ram else 0) | pal)
         del s
         gc.collect()
         self.enable[0]=0

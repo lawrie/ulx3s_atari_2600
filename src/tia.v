@@ -68,7 +68,11 @@ module tia #(
   reg [7:0]        xpos;
   reg [8:0]        ypos;
 
-  assign vid_addr = (ypos - 22) * 160 + xpos;
+  wire [8:0] depth = pal ? 312 : 262;
+  wire [8:0] start = pal ? 36 : 22;
+  wire [8:0] hblank_area = pal ? 48 : 38;
+
+  assign vid_addr = (ypos - start) * 160 + xpos;
 
   // Wishbone-like interface
   wire       valid_cmd = stb_i;
@@ -197,6 +201,7 @@ module tia #(
       xpos <= 0;
       xpos <= 0;
       stall_cpu <= 0;
+      vid_wr <= 0;
 
     // Process reads and writes from CPU
     end else if (cpu_enable_i) begin
@@ -311,11 +316,11 @@ module tia #(
     if (xpos == 160) stall_cpu <= 0;
 
     // Produce the video signal with a clock 3 times as fast as cpu clock
-    if (enable_i) begin
+    if (!rst_i && enable_i) begin
       if (cx_clr) cx <= 0;
       vid_wr <= 0;
 
-      if (ypos < 261) begin // 262 clock counts depth
+      if (ypos < depth - 1) begin // 262 clock counts depth for NSTC
         if (xpos < 227)  begin // 228 clocks width
            xpos <= xpos + 1;
         end else begin
@@ -361,8 +366,8 @@ module tia #(
         if (m0_bit && m1_bit) cx[0] <= 1;
 
         // Draw pixel
-        if ( ypos >= 40 && ypos < 280 && xpos < 160) begin // Don't draw in blank area
-          if (ypos >= 40 && ypos < 262)
+        if ( ypos >= start && xpos < 160) begin // Don't draw in blank area
+	  if (ypos >= hblank_area)
             vid_out <=
                bl_bit ? colupf :
                m0_bit ? colup0 :
@@ -371,7 +376,7 @@ module tia #(
                p0_bit ? colup0 :
                p1_bit ? colup1 :
                pf_bit ? pf_color : colubk;
-          else vid_out <= 7'h00;
+          else vid_out <= 8'b0;
 
           vid_wr <= 1;
         end

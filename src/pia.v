@@ -37,7 +37,7 @@ module pia (
 
   always @(posedge clk_i) begin
     if (rst_i) begin
-      interval <= 0;
+      interval <= sw[3];
       time_counter <= 0;
       intim <= 0;
       underflow <= 0;
