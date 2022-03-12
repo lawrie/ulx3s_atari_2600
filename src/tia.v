@@ -103,19 +103,19 @@ module tia #(
   wire [6:0] pf_color = (scorepf ? (xpos < 160 ? colup0 : colup1) :  colupf);
 
   // Audio - only frequencies supported, not other waveforms
-  wire [19:0] audio_div0 = 256 * audf0 *
+  wire [20:0] audio_div0 = 76 * (audf0 + 1) *
    (audc0 == 6 || audc0 == 10 ? 31 :
     audc0 == 2 || audc0 == 3 ? 2 :
     audc0 == 12 || audc0 == 13 ? 6 :
     audc0 == 14 ? 93 : 1) ;
 
-  wire [19:0] audio_div1 = 256 * audf1 *
+  wire [20:0] audio_div1 = 76 * (audf1 + 1) *
    (audc1 == 6 || audc1 == 10 ? 31 : 
     audc1 == 2 || audc1 == 3 ? 2 :
     audc1 == 12 || audc1 == 13 ? 6 :
     audc1 == 14 ? 93 : 1) ;
 
-  reg [19:0] audio_left_counter, audio_right_counter;
+  reg [20:0] audio_left_counter, audio_right_counter;
 
   integer i;
 
@@ -212,6 +212,7 @@ module tia #(
         case (adr_i) 
           'h00: begin                     // VSYNC
                   vsync <= dat_i[1];
+
                   if (vsync == 0 && dat_i[1] == 1) begin
                     xpos <= 0;
                     ypos <= 0;
@@ -395,7 +396,7 @@ module tia #(
 
     if (audc0 != 4'h0 && audc0 != 4'hb) begin
       if (audio_left_counter >= audio_div0) begin
-        audio_l <= audio_l;
+        audio_l <= !audio_l;
         audio_left_counter <= 0;
       end
     end else audio_l <= 1;
