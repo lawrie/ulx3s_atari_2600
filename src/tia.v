@@ -101,21 +101,22 @@ module tia #(
   wire       m0_bit   = enam0 && xpos >= x_m0 && xpos < x_m0 + m0_w;
   wire       m1_bit   = enam1 && xpos >= x_m1 && xpos < x_m1 + m1_w;
   wire [6:0] pf_color = (scorepf ? (xpos < 160 ? colup0 : colup1) :  colupf);
-
   // Audio - only frequencies supported, not other waveforms
-  wire [20:0] audio_div0 = 76 * (audf0 + 1) *
-   (audc0 == 6 || audc0 == 10 ? 31 :
-    audc0 == 2 || audc0 == 3 ? 2 :
-    audc0 == 12 || audc0 == 13 ? 6 :
+  wire [15:0] audio_div0 = 38 * (audf0 + 1) *
+   (audc0 == 2 ? 15 :
+    audc0 == 4 || audc0 == 5 ? 2 :
+    audc0 == 6 || audc0 == 10 ? 31 :
+    audc0 == 12 || audc0 == 13 || audc0 == 15 ? 6 :
     audc0 == 14 ? 93 : 1) ;
 
-  wire [20:0] audio_div1 = 76 * (audf1 + 1) *
-   (audc1 == 6 || audc1 == 10 ? 31 : 
-    audc1 == 2 || audc1 == 3 ? 2 :
-    audc1 == 12 || audc1 == 13 ? 6 :
+  wire [15:0] audio_div1 = 38 * (audf1 + 1) *
+   (audc1 == 2 ? 15 :
+    audc1 == 4 || audc1 == 5 ? 2 :
+    audc1 == 6 || audc1 == 10 ? 31 :
+    audc1 == 12 || audc1 == 13 || audc1 == 15 ? 6 :
     audc1 == 14 ? 93 : 1) ;
 
-  reg [20:0] audio_left_counter, audio_right_counter;
+  reg [15:0] audio_left_counter, audio_right_counter;
 
   integer i;
 
@@ -388,6 +389,49 @@ module tia #(
   end
 
   reg audio_l, audio_r;
+  wire p4_l, p5_l, p9_l, p4_r, p5_r, p9_r;
+
+  poly4 poly4_l (
+    .clk(clk_i),
+    .ena(audio_left_counter == audio_div0),
+    .reset(rst_i),
+    .q(p4_l)
+  );
+
+  poly5 poly5_l (
+    .clk(clk_i),
+    .ena(audio_left_counter == audio_div0),
+    .reset(rst_i),
+    .q(p5_l)
+  );
+
+  poly9 poly9_l (
+    .clk(clk_i),
+    .ena(audio_left_counter == audio_div0),
+    .reset(rst_i),
+    .q(p9_l)
+  );
+
+  poly4 poly4_r (
+    .clk(clk_i),
+    .ena(audio_right_counter == audio_div0),
+    .reset(rst_i),
+    .q(p4_r)
+  );
+
+  poly5 poly5_r (
+    .clk(clk_i),
+    .ena(audio_right_counter == audio_div0),
+    .reset(rst_i),
+    .q(p5_r)
+  );
+
+  poly9 poly9_r (
+    .clk(clk_i),
+    .ena(audio_right_counter == audio_div0),
+    .reset(rst_i),
+    .q(p9_r)
+  );
 
   // Produce the audio
   always @(posedge cpu_clk_i) begin
@@ -396,14 +440,20 @@ module tia #(
 
     if (audc0 != 4'h0 && audc0 != 4'hb) begin
       if (audio_left_counter >= audio_div0) begin
-        audio_l <= !audio_l;
+        if (audc0 == 1) audio_l <= p4_l;
+	else if (audc0 == 8) audio_l <= p9_l;
+	else if (audc0 == 9 || audc0 == 7) audio_l <= p5_l;
+	else audio_l <= !audio_l;
         audio_left_counter <= 0;
       end
     end else audio_l <= 1;
 
     if (audc1 != 4'h0 && audc1 != 4'hb) begin
       if (audio_right_counter >= audio_div1) begin
-        audio_r <= !audio_r;
+        if (audc1 == 1) audio_r <= p4_r;
+	else if (audc1 == 8) audio_r <= p9_r;
+	else if (audc1 == 9 || audc1 == 7) audio_r <= p5_r;
+	else audio_r <= !audio_r;
         audio_right_counter <= 0;
       end
     end else audio_r <= 1;
@@ -413,3 +463,58 @@ module tia #(
   assign audio_right = audio_r * audv1;
 
 endmodule
+
+module poly4 (
+  input clk,
+  input ena,
+  input reset,
+  output q
+);
+
+reg [3:0] x;
+
+always @(posedge clk) begin
+  if (reset) x <= 4'b1111;
+  else if (ena) x <= {x[1] ^ x[0], x[3:1]};
+end
+
+assign q = x[0];
+
+endmodule
+
+module poly5 (
+  input clk,
+  input ena,
+  input reset,
+  output q
+);
+
+reg [4:0] x;
+
+always @(posedge clk) begin
+  if (reset) x <= 5'b11111;
+  else if (ena) x <= {x[2] ^ x[0], x[4:1]};
+end
+
+assign q = x[0];
+
+endmodule
+
+module poly9 (
+  input clk,
+  input ena,
+  input reset,
+  output q
+);
+
+reg [8:0] x;
+
+always @(posedge clk) begin
+  if (reset) x <= 5'b11111;
+  else if (ena) x <= {x[4] ^ x[0], x[8:1]};
+end
+
+assign q = x[0];
+
+endmodule
+
